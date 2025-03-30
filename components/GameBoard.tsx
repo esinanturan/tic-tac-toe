@@ -2,7 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import { Canvas, RoundedRect, Line, Circle, Group, Text, vec, Fill } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, withTiming, Easing, withSequence, withDelay, runOnJS } from 'react-native-reanimated';
+import Animated, { 
+  useSharedValue, 
+  withTiming, 
+  Easing, 
+  withSequence, 
+  withDelay, 
+  runOnJS,
+  useAnimatedStyle,
+  withSpring,
+  FadeIn
+} from 'react-native-reanimated';
 import { ThemedText } from './ThemedText';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
@@ -47,11 +57,23 @@ export function GameBoard({
   const [winningLine, setWinningLine] = useState<number[][]>([]);
   const [gameStarted, setGameStarted] = useState(false);
   const [currentPlayerState, setCurrentPlayerState] = useState<CellValue>('X');
+  const [lastMove, setLastMove] = useState<[number, number] | null>(null);
   
   // Animation values
   const progress = useSharedValue(0);
-  const boardOpacity = useSharedValue(0);
+  const boardOpacity = useSharedValue(1);
   const cellSize = BOARD_SIZE / gridSize;
+  const boardScale = useSharedValue(1);
+  const cellHighlight = useSharedValue(0);
+  
+  // Board shake animation
+  const boardShakeStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: boardScale.value || 1 }, // Ensure the scale is always a number
+      ]
+    };
+  });
   
   // Update local player state when prop changes
   useEffect(() => {
@@ -69,7 +91,22 @@ export function GameBoard({
   useEffect(() => {
     progress.value = 0;
     progress.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.cubic) });
-  }, [board]);
+    
+    // Animate the board
+    if (lastMove) {
+      // Pulse animation when a move is made - ensure scale values are numbers
+      boardScale.value = withSequence(
+        withTiming(1.03, { duration: 150, easing: Easing.out(Easing.quad) }),
+        withTiming(1, { duration: 150, easing: Easing.in(Easing.quad) })
+      );
+      
+      // Highlight animation
+      cellHighlight.value = withSequence(
+        withTiming(1, { duration: 300, easing: Easing.out(Easing.quad) }),
+        withDelay(300, withTiming(0, { duration: 600 }))
+      );
+    }
+  }, [board, lastMove]);
   
   // Check for a winner
   const checkWinner = (boardState: CellValue[][]) => {
@@ -193,6 +230,7 @@ export function GameBoard({
     const newBoard = [...board.map(row => [...row])];
     newBoard[row][col] = currentPlayerState;
     setBoard(newBoard);
+    setLastMove([row, col]);
     
     const winner = checkWinner(newBoard);
     if (winner) {
@@ -200,6 +238,15 @@ export function GameBoard({
         onGameTie();
       } else {
         onGameWon(winner);
+        
+        // Celebrate animation for winning - ensure it's a numerical value
+        boardScale.value = 1; // Reset first
+        setTimeout(() => {
+          boardScale.value = withTiming(1.05, { duration: 300 });
+          setTimeout(() => {
+            boardScale.value = withTiming(1, { duration: 300 });
+          }, 300);
+        }, 0);
       }
       setGameOver(true);
       
@@ -248,15 +295,34 @@ export function GameBoard({
     setWinningLine([]);
     setGameStarted(false);
     setCurrentPlayerState('X');
+    setLastMove(null);
     
-    // Animate board resetting
+    // Safe animation handling with numerical values
+    boardScale.value = 1; // Reset scale to ensure a number
     boardOpacity.value = 0;
     boardOpacity.value = withTiming(1, { duration: 500 });
     
     // Reset progress animation
     progress.value = 0;
     progress.value = withTiming(1, { duration: 800 });
+    
+    // Board appear animation - simplify to avoid potential issues
+    setTimeout(() => {
+      boardScale.value = withTiming(1.05, { duration: 300 });
+      setTimeout(() => {
+        boardScale.value = withTiming(1, { duration: 300 });
+      }, 300);
+    }, 0);
   };
+  
+  // Get colors for game elements based on theme
+  const gridLineColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+  const boardBackgroundColor = isDark ? colors.background : '#f2f2f7';
+  const xColor = colors.tint;
+  const oColor = isDark ? '#FF9C41' : '#FF9500'; // Slightly adjusted for dark mode
+  const gameOverOverlayColor = isDark ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.7)';
+  const playAgainButtonColor = colors.tint;
+  const playAgainTextColor = '#FFF';
   
   return (
     <View style={styles.container}>
@@ -266,14 +332,16 @@ export function GameBoard({
           { 
             width: BOARD_SIZE, 
             height: BOARD_SIZE,
-            opacity: boardOpacity 
-          }
+            opacity: boardOpacity,
+            backgroundColor: boardBackgroundColor 
+          },
+          boardShakeStyle
         ]}
       >
         <GestureDetector gesture={tapGesture}>
           <Canvas style={{ flex: 1 }}>
             {/* Background */}
-            <Fill color={isDark ? '#1c1c1e' : '#f2f2f7'} />
+            <Fill color={boardBackgroundColor} />
             
             {/* Grid lines */}
             {Array(gridSize - 1).fill(0).map((_, i) => (
@@ -281,19 +349,36 @@ export function GameBoard({
                 <Line
                   p1={vec(0, (i + 1) * cellSize)}
                   p2={vec(BOARD_SIZE, (i + 1) * cellSize)}
-                  color={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}
+                  color={gridLineColor}
                   style="stroke"
                   strokeWidth={2}
                 />
                 <Line
                   p1={vec((i + 1) * cellSize, 0)}
                   p2={vec((i + 1) * cellSize, BOARD_SIZE)}
-                  color={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}
+                  color={gridLineColor}
                   style="stroke"
                   strokeWidth={2}
                 />
               </React.Fragment>
             ))}
+            
+            {/* Highlight for last move */}
+            {lastMove && (
+              <RoundedRect
+                x={lastMove[1] * cellSize + 2}
+                y={lastMove[0] * cellSize + 2}
+                width={cellSize - 4}
+                height={cellSize - 4}
+                r={8}
+                color={
+                  board[lastMove[0]][lastMove[1]] === 'X' 
+                    ? `rgba(${isDark ? '0, 122, 255' : '0, 122, 255'}, 0.15)` 
+                    : `rgba(${isDark ? '255, 156, 65' : '255, 149, 0'}, 0.15)`
+                }
+                opacity={cellHighlight}
+              />
+            )}
             
             {/* X and O markers */}
             {board.map((row, rowIndex) =>
@@ -301,23 +386,32 @@ export function GameBoard({
                 if (cell === 'X') {
                   // X marker
                   const padding = cellSize * 0.2;
+                  const isLastMove = lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex;
                   return (
-                    <Group key={`${rowIndex}-${colIndex}`} transform={[{ translateX: colIndex * cellSize }, { translateY: rowIndex * cellSize }]}>
+                    <Group 
+                      key={`${rowIndex}-${colIndex}`} 
+                      transform={[
+                        { translateX: colIndex * cellSize }, 
+                        { translateY: rowIndex * cellSize }
+                      ]}
+                    >
                       <Line
                         p1={vec(padding, padding)}
                         p2={vec(cellSize - padding, cellSize - padding)}
-                        color={colors.tint}
+                        color={xColor}
                         style="stroke"
                         strokeWidth={4}
                         strokeCap="round"
+                        opacity={isLastMove ? progress : 1}
                       />
                       <Line
                         p1={vec(cellSize - padding, padding)}
                         p2={vec(padding, cellSize - padding)}
-                        color={colors.tint}
+                        color={xColor}
                         style="stroke"
                         strokeWidth={4}
                         strokeCap="round"
+                        opacity={isLastMove ? progress : 1}
                       />
                     </Group>
                   );
@@ -325,15 +419,23 @@ export function GameBoard({
                   // O marker
                   const center = cellSize / 2;
                   const radius = cellSize * 0.3;
+                  const isLastMove = lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex;
                   return (
-                    <Group key={`${rowIndex}-${colIndex}`} transform={[{ translateX: colIndex * cellSize }, { translateY: rowIndex * cellSize }]}>
+                    <Group 
+                      key={`${rowIndex}-${colIndex}`} 
+                      transform={[
+                        { translateX: colIndex * cellSize }, 
+                        { translateY: rowIndex * cellSize }
+                      ]}
+                    >
                       <Circle
                         cx={center}
                         cy={center}
                         r={radius}
-                        color="#FF9500"
+                        color={oColor}
                         style="stroke"
                         strokeWidth={4}
+                        opacity={isLastMove ? progress : 1}
                       />
                     </Group>
                   );
@@ -353,7 +455,7 @@ export function GameBoard({
                   winningLine[winningLine.length - 1][1] * cellSize + cellSize / 2,
                   winningLine[winningLine.length - 1][0] * cellSize + cellSize / 2
                 )}
-                color={board[winningLine[0][0]][winningLine[0][1]] === 'X' ? colors.tint : '#FF9500'}
+                color={board[winningLine[0][0]][winningLine[0][1]] === 'X' ? xColor : oColor}
                 style="stroke"
                 strokeWidth={4}
                 strokeCap="round"
@@ -365,17 +467,26 @@ export function GameBoard({
       </Animated.View>
       
       {gameOver && (
-        <Animated.View style={styles.gameOverContainer}>
-          <ThemedText type="subtitle">
+        <Animated.View 
+          style={[
+            styles.gameOverContainer,
+            { backgroundColor: gameOverOverlayColor }
+          ]}
+          entering={FadeIn.duration(300)}
+        >
+          <ThemedText type="subtitle" style={{ color: '#FFF' }}>
             {winningLine.length > 0 
               ? `Player ${board[winningLine[0][0]][winningLine[0][1]]} wins!` 
               : "It's a tie!"}
           </ThemedText>
           <Animated.View 
-            style={styles.resetButton}
+            style={[
+              styles.resetButton, 
+              { backgroundColor: playAgainButtonColor }
+            ]}
             onTouchEnd={resetGame}
           >
-            <ThemedText>Play Again</ThemedText>
+            <ThemedText style={[styles.buttonText, { color: playAgainTextColor }]}>Play Again</ThemedText>
           </Animated.View>
         </Animated.View>
       )}
@@ -402,7 +513,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
     width: BOARD_SIZE,
     height: BOARD_SIZE,
     borderRadius: 12,
@@ -411,7 +521,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#007AFF',
     borderRadius: 8,
+  },
+  buttonText: {
+    fontWeight: 'bold',
   },
 }); 

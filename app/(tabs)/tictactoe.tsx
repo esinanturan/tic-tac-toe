@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, ScrollView, Alert } from 'react-native';
+import { StyleSheet, ScrollView, Alert, Text, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GameBoard } from '@/components/GameBoard';
 import { ScoreBoard } from '@/components/ScoreBoard';
 import { GameSettings } from '@/components/GameSettings';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
+import { useColorScheme } from 'react-native';
+import { Colors } from '@/constants/Colors';
 
 type GameSettingsType = {
   gridSize: number;
@@ -16,12 +19,24 @@ type GameSettingsType = {
   enableTimer?: boolean;
   enableSounds?: boolean;
   playerName?: string;
+  maxRounds?: number;
 };
 
 type ScoreType = {
   player1: number;
   player2: number;
   ties: number;
+};
+
+// Define leaderboard entry type
+type LeaderboardEntry = {
+  player: string;
+  gridSize: number;
+  winLength: number;
+  time: number;
+  date: string;
+  playerName?: string;
+  symbol: string;
 };
 
 export default function TicTacToeScreen() {
@@ -32,6 +47,9 @@ export default function TicTacToeScreen() {
   const [timerActive, setTimerActive] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [lastWinner, setLastWinner] = useState<string | null>(null);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [showMatchComplete, setShowMatchComplete] = useState(false);
+  const [matchWinner, setMatchWinner] = useState<string | null>(null);
   
   // Settings state
   const [gameSettings, setGameSettings] = useState<GameSettingsType>({
@@ -42,10 +60,67 @@ export default function TicTacToeScreen() {
     enableTimer: true,
     enableSounds: true,
     playerName: '',
+    maxRounds: 5, // Default to 5 rounds
   });
   
   // Previous settings for comparison
   const [previousSettings, setPreviousSettings] = useState<GameSettingsType | null>(null);
+  
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const colors = Colors[colorScheme ?? 'light'];
+  
+  // Check if match is complete after a round
+  useEffect(() => {
+    const maxRounds = gameSettings.maxRounds || 5;
+    
+    console.log(`Round ${currentRound}/${maxRounds}: Player 1 (X): ${score.player1}, Player 2 (O): ${score.player2}`);
+    
+    // Only check if we've played at least one game
+    if (score.player1 > 0 || score.player2 > 0 || score.ties > 0) {
+      // Check if either player has won more than half the rounds
+      const roundsNeededToWin = Math.ceil(maxRounds / 2);
+      
+      console.log(`Rounds needed to win: ${roundsNeededToWin}`);
+      
+      if (score.player1 >= roundsNeededToWin) {
+        // Player 1 (X) wins the match
+        console.log('Player 1 (X) wins the match!');
+        setShowMatchComplete(true);
+        setMatchWinner('X');
+        
+        // Save match result to leaderboard
+        saveMatchToLeaderboard();
+      }
+      else if (score.player2 >= roundsNeededToWin) {
+        // Player 2 (O) wins the match
+        console.log('Player 2 (O) wins the match!');
+        setShowMatchComplete(true);
+        setMatchWinner('O');
+        
+        // Save match result to leaderboard
+        saveMatchToLeaderboard();
+      }
+      // Check if we've reached or completed the maximum number of rounds
+      else if (currentRound >= maxRounds) {
+        // Match is complete, determine winner based on score
+        setShowMatchComplete(true);
+        if (score.player1 > score.player2) {
+          setMatchWinner('X');
+          console.log('Player 1 (X) wins by score after all rounds');
+        } else if (score.player2 > score.player1) {
+          setMatchWinner('O');
+          console.log('Player 2 (O) wins by score after all rounds');
+        } else {
+          setMatchWinner(null); // Tie
+          console.log('Match ended in a tie');
+        }
+        
+        // Save match result to leaderboard
+        saveMatchToLeaderboard();
+      }
+    }
+  }, [currentRound, score, gameSettings.maxRounds]);
   
   // Load game settings from AsyncStorage
   const loadGameSettings = async () => {
@@ -57,7 +132,8 @@ export default function TicTacToeScreen() {
         if (previousSettings && gameStarted) {
           const criticalSettingsChanged = 
             savedSettings.gridSize !== previousSettings.gridSize ||
-            savedSettings.winLength !== previousSettings.winLength;
+            savedSettings.winLength !== previousSettings.winLength ||
+            savedSettings.maxRounds !== previousSettings.maxRounds;
             
           if (criticalSettingsChanged) {
             // If critical settings changed during a game, prompt to reset
@@ -81,7 +157,7 @@ export default function TicTacToeScreen() {
   const promptResetGame = (newSettings: GameSettingsType) => {
     Alert.alert(
       'Game Settings Changed',
-      'Grid size or win conditions have changed. Would you like to reset the current game and apply the new settings?',
+      'Game settings have changed. Would you like to reset the current game and apply the new settings?',
       [
         {
           text: 'Keep Playing',
@@ -93,7 +169,7 @@ export default function TicTacToeScreen() {
             // Apply new settings and reset the game
             setGameSettings(newSettings);
             setPreviousSettings(newSettings);
-            resetGame();
+            resetGame(true); // Reset entire match
           },
         },
       ]
@@ -139,61 +215,152 @@ export default function TicTacToeScreen() {
     setLastWinner(winner);
     setTimerActive(false);
     
-    // Update score
+    // Update score - ensure proper player gets the point
     setScore(prev => {
       const newScore = { ...prev };
       if (winner === 'X') {
         newScore.player1 += 1;
+        console.log('Player 1 (X) scored a point');
       } else if (winner === 'O') {
         newScore.player2 += 1;
+        console.log('Player 2 (O) scored a point');
       }
       return newScore;
     });
     
-    // Save the winning time to leaderboard
+    // Save round data
     if (gameSettings.enableTimer) {
-      saveToLeaderboard(winner, timer);
+      saveRoundToLeaderboard(winner, timer);
     }
+    
+    // Check if we need to increment the round (will be handled by the useEffect)
+    const nextRound = currentRound + 1;
+    console.log(`Moving to round ${nextRound}`);
+    setCurrentRound(nextRound);
   };
   
   // Handle game tie event
   const handleGameTie = () => {
     setTimerActive(false);
     setScore(prev => ({ ...prev, ties: prev.ties + 1 }));
+    console.log('Game ended in a tie');
+    
+    // Check if we need to increment the round (will be handled by the useEffect)
+    const nextRound = currentRound + 1;
+    console.log(`Moving to round ${nextRound}`);
+    setCurrentRound(nextRound);
   };
   
   // Reset the game completely
-  const resetGame = () => {
+  const resetGame = (resetMatch = false) => {
     setGameStarted(false);
     setTimerActive(false);
     setTimer(0);
     setLastWinner(null);
+    
+    if (resetMatch) {
+      setScore({ player1: 0, player2: 0, ties: 0 });
+      setCurrentRound(1);
+      setShowMatchComplete(false);
+      setMatchWinner(null);
+    }
   };
   
-  // Save winning time to leaderboard
-  const saveToLeaderboard = async (player: string, time: number) => {
+  // Reset the match after completion
+  const resetMatch = () => {
+    setScore({ player1: 0, player2: 0, ties: 0 });
+    setCurrentRound(1);
+    setShowMatchComplete(false);
+    setMatchWinner(null);
+    resetGame();
+  };
+  
+  // Save single round data to leaderboard
+  const saveRoundToLeaderboard = async (player: string, time: number) => {
     try {
-      // Get existing leaderboard
-      const leaderboardStr = await AsyncStorage.getItem('leaderboard');
-      const leaderboard = leaderboardStr ? JSON.parse(leaderboardStr) : [];
+      // Get existing rounds data
+      const roundsDataStr = await AsyncStorage.getItem('roundsData');
+      const roundsData = roundsDataStr ? JSON.parse(roundsDataStr) : [];
+      
+      // Get player display name
+      const playerLabel = player === 'X' ? 'Player 1' : 'Player 2';
       
       // Add new entry
-      leaderboard.push({
-        player: player === 'X' ? 'Player 1' : 'Player 2',
+      const newRoundData = {
+        player: playerLabel,
+        playerName: gameSettings.playerName || playerLabel,
         gridSize: gameSettings.gridSize,
         winLength: gameSettings.winLength,
         time,
+        round: currentRound,
         date: new Date().toISOString(),
-      });
+        symbol: player
+      };
       
-      // Sort by time (ascending)
-      leaderboard.sort((a: any, b: any) => a.time - b.time);
-      
-      // Keep only top 10
-      const topEntries = leaderboard.slice(0, 10);
+      roundsData.push(newRoundData);
+      console.log(`Round ${currentRound} won by ${playerLabel} (${player}) in ${time} seconds`);
       
       // Save back to storage
-      await AsyncStorage.setItem('leaderboard', JSON.stringify(topEntries));
+      await AsyncStorage.setItem('roundsData', JSON.stringify(roundsData));
+    } catch (error) {
+      console.error('Failed to save round data:', error);
+    }
+  };
+  
+  // Save match result to leaderboard
+  const saveMatchToLeaderboard = async () => {
+    if (!gameSettings.enableTimer) return;
+    
+    try {
+      // Get existing leaderboard
+      const leaderboardStr = await AsyncStorage.getItem('leaderboard');
+      const leaderboard: LeaderboardEntry[] = leaderboardStr ? JSON.parse(leaderboardStr) : [];
+      
+      // Determine winner
+      const winner = score.player1 > score.player2 ? 'X' : score.player2 > score.player1 ? 'O' : null;
+      
+      // Only save if there's a winner
+      if (winner) {
+        // Get rounds data
+        const roundsDataStr = await AsyncStorage.getItem('roundsData');
+        const roundsData = roundsDataStr ? JSON.parse(roundsDataStr) : [];
+        
+        // Calculate average time for winning rounds
+        const winnerRounds = roundsData.filter((r: any) => 
+          r.player === (winner === 'X' ? 'Player 1' : 'Player 2') && 
+          r.round <= currentRound
+        );
+        
+        const totalTime = winnerRounds.reduce((sum: number, round: any) => sum + round.time, 0);
+        const avgTime = winnerRounds.length > 0 ? totalTime / winnerRounds.length : 0;
+        
+        // Add new entry
+        const newEntry: LeaderboardEntry = {
+          player: winner === 'X' ? 'Player 1' : 'Player 2',
+          playerName: gameSettings.playerName || (winner === 'X' ? 'Player 1' : 'Player 2'),
+          gridSize: gameSettings.gridSize,
+          winLength: gameSettings.winLength,
+          time: avgTime,
+          date: new Date().toISOString(),
+          symbol: winner
+        };
+        
+        console.log('Saving match to leaderboard:', newEntry);
+        
+        leaderboard.push(newEntry);
+        
+        // Sort by time (ascending)
+        leaderboard.sort((a, b) => a.time - b.time);
+        
+        // Keep only top 10
+        const topEntries = leaderboard.slice(0, 10);
+        
+        // Save back to storage
+        await AsyncStorage.setItem('leaderboard', JSON.stringify(topEntries));
+        
+        // Clear rounds data
+        await AsyncStorage.removeItem('roundsData');
+      }
     } catch (error) {
       console.error('Failed to save to leaderboard:', error);
     }
@@ -207,57 +374,115 @@ export default function TicTacToeScreen() {
     });
   };
   
+  // Format time for display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  // Theme-aware colors for UI elements
+  const sectionBgColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+  const buttonBgColor = colors.tint;
+  const buttonTextColor = '#FFFFFF';
+  
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <ThemedText type="title" style={styles.title}>Tic Tac Toe</ThemedText>
-        
-        {gameSettings.enableTimer && (
-          <ThemedView style={styles.timerContainer}>
-            <ThemedText style={styles.timerText}>
-              Time: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
-            </ThemedText>
-          </ThemedView>
-        )}
-        
-        <ScoreBoard 
-          score={score}
-          currentPlayer={gameSettings.currentPlayer}
-          lastWinner={lastWinner}
-        />
-        
-        <GameBoard 
-          gridSize={gameSettings.gridSize}
-          winLength={gameSettings.winLength}
-          currentPlayer={gameSettings.currentPlayer}
-          onGameWon={handleGameWon}
-          onGameTie={handleGameTie}
-          onGameStart={handleGameStart}
-          onGameReset={resetGame}
-          enableSounds={gameSettings.enableSounds}
-        />
-        
-        <GameSettings 
-          settings={gameSettings}
-          onUpdateSettings={handleUpdateSettings}
-        />
-      </ScrollView>
-    </ThemedView>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ThemedView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <ThemedText type="title" style={styles.title}>Tic Tac Toe</ThemedText>
+          
+          {gameSettings.maxRounds && (
+            <ThemedView style={[styles.roundsContainer, { backgroundColor: sectionBgColor }]}>
+              <ThemedText style={styles.roundsText}>
+                Round {currentRound} of {gameSettings.maxRounds}
+              </ThemedText>
+            </ThemedView>
+          )}
+          
+          {gameSettings.enableTimer && (
+            <ThemedView style={[styles.timerContainer, { backgroundColor: sectionBgColor }]}>
+              <ThemedText style={styles.timerText}>
+                Time: {formatTime(timer)}
+              </ThemedText>
+            </ThemedView>
+          )}
+          
+          <ScoreBoard 
+            score={score}
+            currentPlayer={gameSettings.currentPlayer}
+            lastWinner={lastWinner}
+          />
+          
+          {showMatchComplete ? (
+            <ThemedView style={[styles.matchCompleteContainer, { backgroundColor: sectionBgColor }]}>
+              <ThemedText type="title">Match Complete!</ThemedText>
+              <ThemedText style={styles.matchResultText}>
+                {matchWinner 
+                  ? `${matchWinner === 'X' ? 'Player 1 (X)' : 'Player 2 (O)'} wins the match!`
+                  : 'The match ended in a tie!'}
+              </ThemedText>
+              <ThemedText style={styles.scoreText}>
+                Player 1 (X): {score.player1} - Player 2 (O): {score.player2}
+              </ThemedText>
+              <Pressable 
+                style={[styles.newMatchButton, { backgroundColor: buttonBgColor }]} 
+                onPress={resetMatch}
+              >
+                <ThemedText style={[styles.buttonText, { color: buttonTextColor }]}>New Match</ThemedText>
+              </Pressable>
+            </ThemedView>
+          ) : (
+            <GameBoard 
+              gridSize={gameSettings.gridSize}
+              winLength={gameSettings.winLength}
+              currentPlayer={gameSettings.currentPlayer}
+              onGameWon={handleGameWon}
+              onGameTie={handleGameTie}
+              onGameStart={handleGameStart}
+              onGameReset={resetGame}
+              enableSounds={gameSettings.enableSounds}
+              onChangeTurn={(player) => setGameSettings(prev => ({ ...prev, currentPlayer: player }))}
+            />
+          )}
+          
+          <GameSettings 
+            settings={gameSettings}
+            onUpdateSettings={handleUpdateSettings}
+          />
+        </ScrollView>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
   scrollContainer: {
     padding: 16,
+    paddingBottom: 100, // Extra padding at bottom to account for tab bar
     alignItems: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginVertical: 16,
+  },
+  roundsContainer: {
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  roundsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   timerContainer: {
     marginBottom: 16,
@@ -268,5 +493,34 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 18,
     fontWeight: '500',
+  },
+  matchCompleteContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 12,
+    padding: 24,
+    marginVertical: 20,
+  },
+  matchResultText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  scoreText: {
+    fontSize: 16,
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  newMatchButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
 }); 

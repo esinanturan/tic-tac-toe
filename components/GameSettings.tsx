@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Pressable, Alert } from 'react-native';
+import { StyleSheet, View, Pressable, Alert, Switch } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-native-reanimated';
 import { ThemedText } from './ThemedText';
@@ -16,6 +16,7 @@ type GameSettings = {
   enableTimer?: boolean;
   enableSounds?: boolean;
   playerName?: string;
+  maxRounds?: number;
 };
 
 type GameSettingsProps = {
@@ -25,9 +26,18 @@ type GameSettingsProps = {
 
 export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
   const [isExpanded, setIsExpanded] = useState(false);
   const [gameSettingsChanged, setGameSettingsChanged] = useState(false);
+  
+  // Define theme-aware colors
+  const buttonSelectedBg = colors.tint;
+  const buttonSelectedText = '#FFF';
+  const buttonBorderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
+  const switchTrackColorOn = colors.tint;
+  const switchTrackColorOff = isDark ? '#3A3A3C' : '#767577';
+  const switchThumbColor = isDark ? '#FFFFFF' : '#FFFFFF';
   
   // Animation values
   const rotateValue = useSharedValue(0);
@@ -49,7 +59,7 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
   
   const contentStyle = useAnimatedStyle(() => {
     return {
-      height: heightValue.value * 200,
+      height: heightValue.value * 340, // Increased height to accommodate new settings
       opacity: heightValue.value,
       overflow: 'hidden',
     };
@@ -58,6 +68,7 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
   // Settings options
   const gridSizeOptions = [3, 4, 5];
   const winLengthOptions = [3, 4, 5];
+  const roundsOptions = [1, 3, 5, 7, 10];
   const gameModeOptions = [
     { value: 'local', label: 'Local Multiplayer' },
     { value: 'online', label: 'Online Multiplayer' },
@@ -110,10 +121,21 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
     saveSettings({ winLength: length });
   };
   
+  // Handle rounds change
+  const handleRoundsChange = (rounds: number) => {
+    saveSettings({ maxRounds: rounds });
+  };
+  
   // Handle game mode change
   const handleGameModeChange = (mode: string) => {
     saveSettings({ gameMode: mode });
     onUpdateSettings({ gameMode: mode });
+  };
+  
+  // Handle toggle switch changes
+  const handleToggleChange = (setting: 'enableTimer' | 'enableSounds', value: boolean) => {
+    saveSettings({ [setting]: value });
+    onUpdateSettings({ [setting]: value });
   };
   
   return (
@@ -138,14 +160,17 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
                 key={`grid-${size}`}
                 style={[
                   styles.optionButton,
-                  { backgroundColor: settings.gridSize === size ? colors.tint : 'transparent' }
+                  { 
+                    backgroundColor: settings.gridSize === size ? buttonSelectedBg : 'transparent',
+                    borderColor: buttonBorderColor
+                  }
                 ]}
                 onPress={() => handleGridSizeChange(size)}
               >
                 <ThemedText 
                   style={[
                     styles.optionText, 
-                    { color: settings.gridSize === size ? '#FFF' : colors.text }
+                    { color: settings.gridSize === size ? buttonSelectedText : colors.text }
                   ]}
                 >
                   {size}x{size}
@@ -163,17 +188,48 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
                 key={`win-${length}`}
                 style={[
                   styles.optionButton,
-                  { backgroundColor: settings.winLength === length ? colors.tint : 'transparent' }
+                  { 
+                    backgroundColor: settings.winLength === length ? buttonSelectedBg : 'transparent',
+                    borderColor: buttonBorderColor
+                  }
                 ]}
                 onPress={() => handleWinLengthChange(length)}
               >
                 <ThemedText 
                   style={[
                     styles.optionText, 
-                    { color: settings.winLength === length ? '#FFF' : colors.text }
+                    { color: settings.winLength === length ? buttonSelectedText : colors.text }
                   ]}
                 >
                   {length}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        
+        <View style={styles.settingRow}>
+          <ThemedText style={styles.settingLabel}>Max Rounds:</ThemedText>
+          <View style={styles.optionsContainer}>
+            {roundsOptions.map(rounds => (
+              <Pressable
+                key={`rounds-${rounds}`}
+                style={[
+                  styles.optionButton,
+                  { 
+                    backgroundColor: settings.maxRounds === rounds ? buttonSelectedBg : 'transparent',
+                    borderColor: buttonBorderColor
+                  }
+                ]}
+                onPress={() => handleRoundsChange(rounds)}
+              >
+                <ThemedText 
+                  style={[
+                    styles.optionText, 
+                    { color: settings.maxRounds === rounds ? buttonSelectedText : colors.text }
+                  ]}
+                >
+                  {rounds}
                 </ThemedText>
               </Pressable>
             ))}
@@ -188,20 +244,47 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
                 key={`mode-${mode.value}`}
                 style={[
                   styles.modeButton,
-                  { backgroundColor: settings.gameMode === mode.value ? colors.tint : 'transparent' }
+                  { 
+                    backgroundColor: settings.gameMode === mode.value ? buttonSelectedBg : 'transparent',
+                    borderColor: buttonBorderColor
+                  }
                 ]}
                 onPress={() => handleGameModeChange(mode.value)}
               >
                 <ThemedText 
                   style={[
                     styles.optionText, 
-                    { color: settings.gameMode === mode.value ? '#FFF' : colors.text }
+                    { color: settings.gameMode === mode.value ? buttonSelectedText : colors.text }
                   ]}
                 >
                   {mode.label}
                 </ThemedText>
               </Pressable>
             ))}
+          </View>
+        </View>
+        
+        <View style={styles.settingRow}>
+          <View style={styles.toggleRow}>
+            <ThemedText style={styles.settingLabel}>Enable Timer</ThemedText>
+            <Switch
+              value={settings.enableTimer}
+              onValueChange={(value) => handleToggleChange('enableTimer', value)}
+              trackColor={{ false: switchTrackColorOff, true: switchTrackColorOn }}
+              thumbColor={switchThumbColor}
+              ios_backgroundColor={switchTrackColorOff}
+            />
+          </View>
+          
+          <View style={styles.toggleRow}>
+            <ThemedText style={styles.settingLabel}>Enable Sounds</ThemedText>
+            <Switch
+              value={settings.enableSounds}
+              onValueChange={(value) => handleToggleChange('enableSounds', value)}
+              trackColor={{ false: switchTrackColorOff, true: switchTrackColorOn }}
+              thumbColor={switchThumbColor}
+              ios_backgroundColor={switchTrackColorOff}
+            />
           </View>
         </View>
         
@@ -218,8 +301,8 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    borderRadius: 12,
-    marginVertical: 10,
+    marginVertical: 16,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   header: {
@@ -227,14 +310,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   content: {
     paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   settingRow: {
-    marginVertical: 12,
+    marginBottom: 16,
   },
   settingLabel: {
     fontSize: 16,
@@ -247,23 +329,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   optionButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    marginRight: 8,
+    marginBottom: 8,
   },
   modeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    marginRight: 8,
     marginBottom: 8,
   },
   optionText: {
-    fontSize: 14,
     fontWeight: '500',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   changeNotice: {
     marginTop: 16,

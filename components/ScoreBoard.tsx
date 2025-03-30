@@ -18,13 +18,20 @@ type ScoreBoardProps = {
 
 export function ScoreBoard({ score, currentPlayer, lastWinner }: ScoreBoardProps) {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
+  
+  // Define theme colors
+  const player1Color = colors.tint;
+  const player2Color = isDark ? '#FF9C41' : '#FF9500'; // Slightly adjusted for dark mode
+  const tieColor = isDark ? '#636366' : '#8E8E93';
+  const trackColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
   
   // Animated style for the player indicator
   const indicatorStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: withTiming(
-        currentPlayer === 'X' ? colors.tint : '#FF9500', 
+        currentPlayer === 'X' ? player1Color : player2Color, 
         { duration: 300 }
       ),
       transform: [
@@ -36,19 +43,19 @@ export function ScoreBoard({ score, currentPlayer, lastWinner }: ScoreBoardProps
         }
       ],
     };
-  }, [currentPlayer, colorScheme]);
+  }, [currentPlayer, colorScheme, player1Color, player2Color]);
   
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.scoresContainer}>
-        <ScoreItem label="Player X" score={score.player1} color={colors.tint} />
-        <ScoreItem label="Ties" score={score.ties} color="#8E8E93" />
-        <ScoreItem label="Player O" score={score.player2} color="#FF9500" />
+        <ScoreItem label="Player 1 (X)" score={score.player1} color={player1Color} />
+        <ScoreItem label="Ties" score={score.ties} color={tieColor} />
+        <ScoreItem label="Player 2 (O)" score={score.player2} color={player2Color} />
       </ThemedView>
       
       <ThemedView style={styles.turnContainer}>
         <ThemedText style={styles.turnText}>Current turn</ThemedText>
-        <View style={styles.indicatorTrack}>
+        <View style={[styles.indicatorTrack, { backgroundColor: trackColor }]}>
           <Animated.View style={[styles.indicator, indicatorStyle]} />
           <ThemedText style={[styles.playerX, { color: currentPlayer === 'X' ? '#FFF' : colors.text }]}>X</ThemedText>
           <ThemedText style={[styles.playerO, { color: currentPlayer === 'O' ? '#FFF' : colors.text }]}>O</ThemedText>
@@ -58,7 +65,7 @@ export function ScoreBoard({ score, currentPlayer, lastWinner }: ScoreBoardProps
       {lastWinner && (
         <ThemedView style={styles.lastWinnerContainer}>
           <ThemedText style={styles.lastWinnerText}>
-            Last winner: {lastWinner === 'X' ? 'Player X' : 'Player O'}
+            Last winner: {lastWinner === 'X' ? 'Player 1 (X)' : 'Player 2 (O)'}
           </ThemedText>
         </ThemedView>
       )}
@@ -125,7 +132,6 @@ const styles = StyleSheet.create({
     width: 140,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
     flexDirection: 'row',
     position: 'relative',
   },

@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Switch, Pressable, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 
-// Types for leaderboard entries
-type LeaderboardEntry = {
-  playerName: string;
-  timeSeconds: number;
-  gridSize: number;
-  date: string;
-};
-
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
+  
+  // Theme-aware colors
+  const sectionBgColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)';
+  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  const buttonSelectedBg = colors.tint;
+  const buttonSelectedText = '#FFF';
   
   // Game settings
   const [settings, setSettings] = useState({
@@ -24,17 +24,13 @@ export default function SettingsScreen() {
     winLength: 3,
     enableTimer: true,
     enableSounds: true,
-    playerName: 'Player 1'
+    playerName: 'Player 1',
+    maxRounds: 5
   });
   
-  // Leaderboard
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [selectedGridSize, setSelectedGridSize] = useState(3);
-  
-  // Load settings and leaderboard on mount
+  // Load settings on mount
   useEffect(() => {
     loadSettings();
-    loadLeaderboard();
   }, []);
   
   // Load settings from AsyncStorage
@@ -59,55 +55,11 @@ export default function SettingsScreen() {
     }
   };
   
-  // Load leaderboard from AsyncStorage
-  const loadLeaderboard = async () => {
-    try {
-      const savedLeaderboard = await AsyncStorage.getItem('gameLeaderboard');
-      if (savedLeaderboard) {
-        setLeaderboard(JSON.parse(savedLeaderboard));
-      }
-    } catch (error) {
-      console.error('Failed to load leaderboard:', error);
-    }
-  };
-  
-  // Reset leaderboard
-  const resetLeaderboard = async () => {
-    Alert.alert(
-      'Reset Leaderboard',
-      'Are you sure you want to reset the leaderboard? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await AsyncStorage.removeItem('gameLeaderboard');
-              setLeaderboard([]);
-            } catch (error) {
-              console.error('Failed to reset leaderboard:', error);
-            }
-          }
-        }
-      ]
-    );
-  };
-  
-  // Format time for display (mm:ss.ms)
-  const formatTime = (timeSeconds: number) => {
-    const minutes = Math.floor(timeSeconds / 60);
-    const seconds = Math.floor(timeSeconds % 60);
-    const ms = Math.floor((timeSeconds % 1) * 100);
-    
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-  };
-  
   // Grid size options
   const gridSizeOptions = [3, 4, 5, 6];
+  
+  // Rounds options
+  const roundsOptions = [1, 3, 5, 7, 10];
   
   // Handle grid size change
   const handleGridSizeChange = (size: number) => {
@@ -128,6 +80,14 @@ export default function SettingsScreen() {
     });
   };
   
+  // Handle rounds change
+  const handleRoundsChange = (rounds: number) => {
+    saveSettings({
+      ...settings,
+      maxRounds: rounds
+    });
+  };
+  
   // Handle toggle changes
   const handleToggleChange = (key: keyof typeof settings, value: boolean) => {
     saveSettings({
@@ -136,251 +96,212 @@ export default function SettingsScreen() {
     });
   };
   
-  // Filter leaderboard by selected grid size
-  const filteredLeaderboard = leaderboard
-    .filter(entry => entry.gridSize === selectedGridSize)
-    .sort((a, b) => a.timeSeconds - b.timeSeconds)
-    .slice(0, 10); // Top 10 times
+  // Handle player name change
+  const handlePlayerNameChange = (name: string) => {
+    saveSettings({
+      ...settings,
+      playerName: name
+    });
+  };
   
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>Game Settings</ThemedText>
-      
-      <ScrollView style={styles.scrollView}>
-        {/* Grid Size Settings */}
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle">Grid Size</ThemedText>
-          <View style={styles.optionsContainer}>
-            {gridSizeOptions.map(size => (
-              <Pressable
-                key={`grid-${size}`}
-                style={[
-                  styles.optionButton,
-                  { backgroundColor: settings.gridSize === size ? colors.tint : 'transparent' }
-                ]}
-                onPress={() => handleGridSizeChange(size)}
-              >
-                <ThemedText 
-                  style={[
-                    styles.optionText, 
-                    { color: settings.gridSize === size ? '#FFF' : colors.text }
-                  ]}
-                >
-                  {size}x{size}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-        </ThemedView>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ThemedView style={styles.container}>
+        <ThemedText type="title" style={styles.title}>Game Settings</ThemedText>
         
-        {/* Win Length Settings */}
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle">Win Length</ThemedText>
-          <View style={styles.optionsContainer}>
-            {Array.from({ length: settings.gridSize }, (_, i) => i + 3)
-              .filter(len => len <= settings.gridSize)
-              .map(length => (
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {/* Grid Size Settings */}
+          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
+            <ThemedText type="subtitle">Grid Size</ThemedText>
+            <View style={styles.optionsContainer}>
+              {gridSizeOptions.map(size => (
                 <Pressable
-                  key={`win-${length}`}
+                  key={`grid-${size}`}
                   style={[
                     styles.optionButton,
-                    { backgroundColor: settings.winLength === length ? colors.tint : 'transparent' }
+                    { 
+                      backgroundColor: settings.gridSize === size ? buttonSelectedBg : 'transparent',
+                      borderColor: borderColor
+                    }
                   ]}
-                  onPress={() => handleWinLengthChange(length)}
+                  onPress={() => handleGridSizeChange(size)}
                 >
                   <ThemedText 
                     style={[
                       styles.optionText, 
-                      { color: settings.winLength === length ? '#FFF' : colors.text }
+                      { color: settings.gridSize === size ? buttonSelectedText : colors.text }
                     ]}
                   >
-                    {length}
+                    {size}x{size}
                   </ThemedText>
                 </Pressable>
               ))}
-          </View>
-          <ThemedText style={styles.helperText}>
-            Number of marks in a row needed to win
-          </ThemedText>
-        </ThemedView>
-        
-        {/* Game Options */}
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle">Game Options</ThemedText>
-          
-          <View style={styles.toggleRow}>
-            <ThemedText>Enable Timer</ThemedText>
-            <Switch
-              value={settings.enableTimer}
-              onValueChange={(value) => handleToggleChange('enableTimer', value)}
-              trackColor={{ false: '#767577', true: colors.tint }}
-            />
-          </View>
-          
-          <View style={styles.toggleRow}>
-            <ThemedText>Enable Sounds</ThemedText>
-            <Switch
-              value={settings.enableSounds}
-              onValueChange={(value) => handleToggleChange('enableSounds', value)}
-              trackColor={{ false: '#767577', true: colors.tint }}
-            />
-          </View>
-        </ThemedView>
-        
-        {/* Leaderboard */}
-        <ThemedView style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Leaderboard</ThemedText>
-            <Pressable 
-              style={styles.resetButton}
-              onPress={resetLeaderboard}
-            >
-              <ThemedText style={styles.resetText}>Reset</ThemedText>
-            </Pressable>
-          </View>
-          
-          <View style={styles.optionsContainer}>
-            {gridSizeOptions.map(size => (
-              <Pressable
-                key={`leaderboard-${size}`}
-                style={[
-                  styles.optionButton,
-                  { backgroundColor: selectedGridSize === size ? colors.tint : 'transparent' }
-                ]}
-                onPress={() => setSelectedGridSize(size)}
-              >
-                <ThemedText 
-                  style={[
-                    styles.optionText, 
-                    { color: selectedGridSize === size ? '#FFF' : colors.text }
-                  ]}
-                >
-                  {size}x{size}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-          
-          <ThemedView style={styles.leaderboardContainer}>
-            {filteredLeaderboard.length > 0 ? (
-              <>
-                <View style={styles.leaderboardHeader}>
-                  <ThemedText style={[styles.leaderboardHeaderText, { flex: 0.5 }]}>Rank</ThemedText>
-                  <ThemedText style={[styles.leaderboardHeaderText, { flex: 2 }]}>Player</ThemedText>
-                  <ThemedText style={[styles.leaderboardHeaderText, { flex: 1.5 }]}>Time</ThemedText>
-                  <ThemedText style={[styles.leaderboardHeaderText, { flex: 1.5 }]}>Date</ThemedText>
-                </View>
-                
-                {filteredLeaderboard.map((entry, index) => (
-                  <View key={`entry-${index}`} style={styles.leaderboardRow}>
-                    <ThemedText style={[styles.leaderboardText, { flex: 0.5 }]}>{index + 1}</ThemedText>
-                    <ThemedText style={[styles.leaderboardText, { flex: 2 }]} numberOfLines={1}>{entry.playerName}</ThemedText>
-                    <ThemedText style={[styles.leaderboardText, { flex: 1.5 }]}>{formatTime(entry.timeSeconds)}</ThemedText>
-                    <ThemedText style={[styles.leaderboardText, { flex: 1.5 }]} numberOfLines={1}>{new Date(entry.date).toLocaleDateString()}</ThemedText>
-                  </View>
-                ))}
-              </>
-            ) : (
-              <ThemedText style={styles.emptyLeaderboard}>
-                No records yet. Win games to set records!
-              </ThemedText>
-            )}
+            </View>
           </ThemedView>
-        </ThemedView>
-      </ScrollView>
-    </ThemedView>
+          
+          {/* Win Length Settings */}
+          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
+            <ThemedText type="subtitle">Win Length</ThemedText>
+            <View style={styles.optionsContainer}>
+              {Array.from({ length: settings.gridSize }, (_, i) => i + 3)
+                .filter(len => len <= settings.gridSize)
+                .map(length => (
+                  <Pressable
+                    key={`win-${length}`}
+                    style={[
+                      styles.optionButton,
+                      { 
+                        backgroundColor: settings.winLength === length ? buttonSelectedBg : 'transparent',
+                        borderColor: borderColor
+                      }
+                    ]}
+                    onPress={() => handleWinLengthChange(length)}
+                  >
+                    <ThemedText 
+                      style={[
+                        styles.optionText, 
+                        { color: settings.winLength === length ? buttonSelectedText : colors.text }
+                      ]}
+                    >
+                      {length}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+            </View>
+            <ThemedText style={styles.helperText}>
+              Number of marks in a row needed to win
+            </ThemedText>
+          </ThemedView>
+          
+          {/* Rounds Settings */}
+          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
+            <ThemedText type="subtitle">Match Rounds</ThemedText>
+            <View style={styles.optionsContainer}>
+              {roundsOptions.map(rounds => (
+                <Pressable
+                  key={`rounds-${rounds}`}
+                  style={[
+                    styles.optionButton,
+                    { 
+                      backgroundColor: settings.maxRounds === rounds ? buttonSelectedBg : 'transparent',
+                      borderColor: borderColor
+                    }
+                  ]}
+                  onPress={() => handleRoundsChange(rounds)}
+                >
+                  <ThemedText 
+                    style={[
+                      styles.optionText, 
+                      { color: settings.maxRounds === rounds ? buttonSelectedText : colors.text }
+                    ]}
+                  >
+                    {rounds}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            <ThemedText style={styles.helperText}>
+              Number of rounds in a complete match
+            </ThemedText>
+          </ThemedView>
+          
+          {/* Game Options */}
+          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
+            <ThemedText type="subtitle">Game Options</ThemedText>
+            
+            <View style={[styles.toggleRow, { borderBottomColor: borderColor }]}>
+              <ThemedText>Enable Timer</ThemedText>
+              <Switch
+                value={settings.enableTimer}
+                onValueChange={(value) => handleToggleChange('enableTimer', value)}
+                trackColor={{ false: isDark ? '#3A3A3C' : '#767577', true: colors.tint }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={isDark ? '#3A3A3C' : '#767577'}
+              />
+            </View>
+            
+            <View style={[styles.toggleRow, { borderBottomColor: borderColor }]}>
+              <ThemedText>Enable Sounds</ThemedText>
+              <Switch
+                value={settings.enableSounds}
+                onValueChange={(value) => handleToggleChange('enableSounds', value)}
+                trackColor={{ false: isDark ? '#3A3A3C' : '#767577', true: colors.tint }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={isDark ? '#3A3A3C' : '#767577'}
+              />
+            </View>
+          </ThemedView>
+        </ScrollView>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    padding: 16,
+  },
+  scrollContent: {
+    paddingBottom: 100, // Extra padding for tab bar
   },
   title: {
-    marginBottom: 20,
     textAlign: 'center',
+    marginVertical: 20,
   },
   scrollView: {
     flex: 1,
+    padding: 16,
   },
   section: {
     marginBottom: 24,
     padding: 16,
     borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(150, 150, 150, 0.2)',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   optionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 10,
     gap: 10,
+    marginTop: 10,
   },
   optionButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(150, 150, 150, 0.3)',
+    borderWidth: 1,
   },
   optionText: {
-    fontSize: 16,
     fontWeight: '500',
   },
   helperText: {
-    fontSize: 12,
     marginTop: 8,
+    fontSize: 12,
     opacity: 0.6,
   },
   toggleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 10,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   resetButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
     backgroundColor: '#FF3B30',
+    borderRadius: 6,
   },
   resetText: {
     color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  leaderboardContainer: {
-    marginTop: 16,
-  },
-  leaderboardHeader: {
-    flexDirection: 'row',
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(150, 150, 150, 0.3)',
-  },
-  leaderboardHeaderText: {
     fontWeight: '600',
-    fontSize: 14,
-  },
-  leaderboardRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(150, 150, 150, 0.1)',
-  },
-  leaderboardText: {
-    fontSize: 14,
-  },
-  emptyLeaderboard: {
-    textAlign: 'center',
-    marginVertical: 24,
-    opacity: 0.6,
+    fontSize: 12,
   },
 }); 
