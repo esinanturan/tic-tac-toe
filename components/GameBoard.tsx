@@ -399,8 +399,18 @@ export function GameBoard({
           <Circle
             cx={cellSize / 2}
             cy={cellSize / 2}
-            r={cellSize * 0.35}
+            r={cellSize * 0.38} // Slightly larger background
+            color={isDark ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.15)'} // Semi-transparent
+            style="fill"
+            opacity={isLastMove ? progress : 1}
+          />
+          <Circle
+            cx={cellSize / 2}
+            cy={cellSize / 2}
+            r={cellSize * 0.38}
             color={xColor}
+            style="stroke"
+            strokeWidth={2.5}
             opacity={isLastMove ? progress : 1}
           />
         </Group>
@@ -444,8 +454,18 @@ export function GameBoard({
           <Circle
             cx={cellSize / 2}
             cy={cellSize / 2}
-            r={cellSize * 0.35}
+            r={cellSize * 0.38} // Slightly larger background
+            color={isDark ? 'rgba(255, 156, 65, 0.2)' : 'rgba(255, 149, 0, 0.15)'} // Semi-transparent
+            style="fill"
+            opacity={isLastMove ? progress : 1}
+          />
+          <Circle
+            cx={cellSize / 2}
+            cy={cellSize / 2}
+            r={cellSize * 0.38}
             color={oColor}
+            style="stroke"
+            strokeWidth={2.5}
             opacity={isLastMove ? progress : 1}
           />
         </Group>
@@ -574,53 +594,71 @@ export function GameBoard({
           </Canvas>
         </GestureDetector>
         
-        {/* Text overlays for custom symbols */}
-        {cellOverlays.map((overlay) => (
-          <Animated.Text
-            key={`overlay-${overlay.row}-${overlay.col}`}
-            style={[
-              styles.symbolOverlay,
-              {
-                top: overlay.row * cellSize,
-                left: overlay.col * cellSize,
-                width: cellSize,
-                height: cellSize,
-                fontSize: cellSize * 0.5,
-                color: isDark ? '#FFFFFF' : '#000000', // Ensure contrast with circles
-                opacity: lastMove && lastMove[0] === overlay.row && lastMove[1] === overlay.col 
-                  ? (progress as any) : 1,
-              }
-            ]}
+        {/* Text overlays for custom symbols - only show when game is not over */}
+        {!gameOver && cellOverlays.map((overlay) => (
+          <View
+            key={`overlay-container-${overlay.row}-${overlay.col}`}
+            style={{
+              position: 'absolute',
+              top: overlay.row * cellSize,
+              left: overlay.col * cellSize,
+              width: cellSize,
+              height: cellSize,
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 10
+            }}
           >
-            {overlay.value}
-          </Animated.Text>
+            <Animated.Text
+              style={[
+                {
+                  fontSize: cellSize * 0.6,
+                  fontWeight: 'bold',
+                  color: isDark ? '#FFFFFF' : '#000000',
+                  textAlign: 'center',
+                  opacity: lastMove && lastMove[0] === overlay.row && lastMove[1] === overlay.col 
+                    ? (progress as any) : 1,
+                }
+              ]}
+            >
+              {overlay.value}
+            </Animated.Text>
+          </View>
         ))}
-        
-        {gameOver && (
+      </Animated.View>
+      
+      {/* Game over overlay - rendered separately to ensure it's always on top */}
+      {gameOver && (
+        <Animated.View 
+          style={[
+            styles.gameOverContainer,
+            { 
+              backgroundColor: gameOverOverlayColor,
+              width: BOARD_SIZE,
+              height: BOARD_SIZE,
+              position: 'absolute',
+              top: 10, // Match padding of container
+              zIndex: 100 // Ensure this is higher than any other element
+            }
+          ]}
+          entering={FadeIn.duration(300)}
+        >
+          <ThemedText type="subtitle" style={{ color: '#FFFFFF' }}>
+            {winningLine.length > 0 
+              ? `${board[winningLine[0][0]][winningLine[0][1]] === player1Symbol ? player1Name : player2Name} (${board[winningLine[0][0]][winningLine[0][1]]}) wins!` 
+              : "It's a tie!"}
+          </ThemedText>
           <Animated.View 
             style={[
-              styles.gameOverContainer,
-              { backgroundColor: gameOverOverlayColor }
+              styles.resetButton, 
+              { backgroundColor: playAgainButtonColor }
             ]}
-            entering={FadeIn.duration(300)}
+            onTouchEnd={resetGame}
           >
-            <ThemedText type="subtitle" style={{ color: '#FFFFFF' }}>
-              {winningLine.length > 0 
-                ? `${board[winningLine[0][0]][winningLine[0][1]] === player1Symbol ? player1Name : player2Name} (${board[winningLine[0][0]][winningLine[0][1]]}) wins!` 
-                : "It's a tie!"}
-            </ThemedText>
-            <Animated.View 
-              style={[
-                styles.resetButton, 
-                { backgroundColor: playAgainButtonColor }
-              ]}
-              onTouchEnd={resetGame}
-            >
-              <ThemedText style={[styles.buttonText, { color: playAgainTextColor }]}>Play Again</ThemedText>
-            </Animated.View>
+            <ThemedText style={[styles.buttonText, { color: playAgainTextColor }]}>Play Again</ThemedText>
           </Animated.View>
-        )}
-      </Animated.View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -645,6 +683,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    zIndex: 20, // Ensure this is higher than any other element
   },
   resetButton: {
     marginTop: 20,
@@ -655,13 +694,5 @@ const styles = StyleSheet.create({
   buttonText: {
     fontWeight: 'bold',
     fontSize: 16,
-  },
-  symbolOverlay: {
-    position: 'absolute',
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontWeight: 'bold',
-    lineHeight: 0, // Help with vertical centering
-    paddingTop: '30%', // Adjust to center emoji vertically
   }
 }); 

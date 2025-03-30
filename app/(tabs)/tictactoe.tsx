@@ -84,51 +84,27 @@ export default function TicTacToeScreen() {
     
     console.log(`Round ${currentRound}/${maxRounds}: Player 1 (${player1Symbol}): ${score.player1}, Player 2 (${player2Symbol}): ${score.player2}`);
     
-    // Only check if we've played at least one game
-    if (score.player1 > 0 || score.player2 > 0 || score.ties > 0) {
-      // Check if either player has won more than half the rounds
-      const roundsNeededToWin = Math.ceil(maxRounds / 2);
-      
-      console.log(`Rounds needed to win: ${roundsNeededToWin}`);
-      
-      if (score.player1 >= roundsNeededToWin) {
-        // Player 1 wins the match
-        console.log(`Player 1 (${player1Symbol}) wins the match!`);
-        setShowMatchComplete(true);
+    // We only need to handle the case when the max rounds are reached without a player having enough wins
+    // The handleGameWon function will handle the case when a player wins
+    if (currentRound > maxRounds && !showMatchComplete) {
+      // Match is complete, determine winner based on score
+      console.log(`Max rounds reached (${maxRounds}). Ending match based on scores.`);
+      setShowMatchComplete(true);
+      if (score.player1 > score.player2) {
         setMatchWinner(player1Symbol);
-        
-        // Save match result to leaderboard
-        saveMatchToLeaderboard();
-      }
-      else if (score.player2 >= roundsNeededToWin) {
-        // Player 2 wins the match
-        console.log(`Player 2 (${player2Symbol}) wins the match!`);
-        setShowMatchComplete(true);
+        console.log(`Player 1 (${player1Symbol}) wins by score after all rounds`);
+      } else if (score.player2 > score.player1) {
         setMatchWinner(player2Symbol);
-        
-        // Save match result to leaderboard
-        saveMatchToLeaderboard();
+        console.log(`Player 2 (${player2Symbol}) wins by score after all rounds`);
+      } else {
+        setMatchWinner(null); // Tie
+        console.log('Match ended in a tie');
       }
-      // Check if we've reached or completed the maximum number of rounds
-      else if (currentRound >= maxRounds) {
-        // Match is complete, determine winner based on score
-        setShowMatchComplete(true);
-        if (score.player1 > score.player2) {
-          setMatchWinner(player1Symbol);
-          console.log(`Player 1 (${player1Symbol}) wins by score after all rounds`);
-        } else if (score.player2 > score.player1) {
-          setMatchWinner(player2Symbol);
-          console.log(`Player 2 (${player2Symbol}) wins by score after all rounds`);
-        } else {
-          setMatchWinner(null); // Tie
-          console.log('Match ended in a tie');
-        }
-        
-        // Save match result to leaderboard
-        saveMatchToLeaderboard();
-      }
+      
+      // Save match result to leaderboard
+      saveMatchToLeaderboard();
     }
-  }, [currentRound, score, gameSettings]);
+  }, [currentRound, score, gameSettings, showMatchComplete]);
   
   // Load game settings from AsyncStorage
   const loadGameSettings = async () => {
@@ -218,45 +194,127 @@ export default function TicTacToeScreen() {
     }
   };
   
-  // Handle game won event
+  // Handle when a game is won
   const handleGameWon = (winner: string) => {
-    setLastWinner(winner);
-    setTimerActive(false);
+    console.log(`Game won by ${winner}`);
     
-    // Update score - ensure proper player gets the point
-    setScore(prev => {
-      const newScore = { ...prev };
-      if (winner === 'X') {
-        newScore.player1 += 1;
-        console.log('Player 1 (X) scored a point');
-      } else if (winner === 'O') {
-        newScore.player2 += 1;
-        console.log('Player 2 (O) scored a point');
-      }
-      return newScore;
-    });
+    // Update the score
+    let updatedScore = {...score};
+    if (winner === (gameSettings.player1Symbol || 'X')) {
+      updatedScore = {
+        ...score,
+        player1: score.player1 + 1
+      };
+      setScore(updatedScore);
+      console.log(`Player 1 (${gameSettings.player1Symbol || 'X'}) scored a point. New score: ${updatedScore.player1}`);
+    } else {
+      updatedScore = {
+        ...score,
+        player2: score.player2 + 1
+      };
+      setScore(updatedScore);
+      console.log(`Player 2 (${gameSettings.player2Symbol || 'O'}) scored a point. New score: ${updatedScore.player2}`);
+    }
+    
+    // Update last winner
+    setLastWinner(winner);
     
     // Save round data
     if (gameSettings.enableTimer) {
       saveRoundToLeaderboard(winner, timer);
     }
     
-    // Check if we need to increment the round (will be handled by the useEffect)
-    const nextRound = currentRound + 1;
-    console.log(`Moving to round ${nextRound}`);
-    setCurrentRound(nextRound);
+    // Increment round counter (after a slight delay)
+    setTimeout(() => {
+      // Only increment the round if we haven't reached the max rounds
+      // or if neither player has won enough rounds yet
+      const maxRounds = gameSettings.maxRounds || 5;
+      const roundsNeededToWin = Math.ceil(maxRounds / 2);
+      
+      const player1HasEnoughWins = updatedScore.player1 >= roundsNeededToWin;
+      const player2HasEnoughWins = updatedScore.player2 >= roundsNeededToWin;
+      const hasReachedMaxRounds = currentRound >= maxRounds;
+      
+      // Check if we should end the match
+      if (player1HasEnoughWins) {
+        console.log(`Player 1 has ${updatedScore.player1} wins - enough to win the match!`);
+        setShowMatchComplete(true);
+        setMatchWinner(gameSettings.player1Symbol || 'X');
+        saveMatchToLeaderboard();
+        return;
+      } else if (player2HasEnoughWins) {
+        console.log(`Player 2 has ${updatedScore.player2} wins - enough to win the match!`);
+        setShowMatchComplete(true);
+        setMatchWinner(gameSettings.player2Symbol || 'O');
+        saveMatchToLeaderboard();
+        return;
+      }
+      
+      if (!hasReachedMaxRounds) {
+        console.log(`Moving to round ${currentRound + 1}`);
+        setCurrentRound(prev => prev + 1);
+      } else {
+        // End the match because max rounds reached
+        console.log(`Max rounds (${maxRounds}) reached. Ending match.`);
+        setShowMatchComplete(true);
+        
+        if (updatedScore.player1 > updatedScore.player2) {
+          setMatchWinner(gameSettings.player1Symbol || 'X');
+        } else if (updatedScore.player2 > updatedScore.player1) {
+          setMatchWinner(gameSettings.player2Symbol || 'O');
+        } else {
+          setMatchWinner(null); // Tie
+        }
+        
+        saveMatchToLeaderboard();
+      }
+    }, 800);
+    
+    // Stop the timer
+    setTimerActive(false);
   };
   
-  // Handle game tie event
+  // Handle game tie
   const handleGameTie = () => {
-    setTimerActive(false);
-    setScore(prev => ({ ...prev, ties: prev.ties + 1 }));
-    console.log('Game ended in a tie');
+    console.log("Game ended in a tie");
     
-    // Check if we need to increment the round (will be handled by the useEffect)
-    const nextRound = currentRound + 1;
-    console.log(`Moving to round ${nextRound}`);
-    setCurrentRound(nextRound);
+    // Update score with the tie
+    const updatedScore = {
+      ...score,
+      ties: score.ties + 1
+    };
+    setScore(updatedScore);
+    
+    // Set last winner to null for a tie
+    setLastWinner(null);
+    
+    // Stop the timer
+    setTimerActive(false);
+    
+    // Increment round counter (after a slight delay)
+    setTimeout(() => {
+      const maxRounds = gameSettings.maxRounds || 5;
+      const hasReachedMaxRounds = currentRound >= maxRounds;
+      
+      if (!hasReachedMaxRounds) {
+        console.log(`Moving to round ${currentRound + 1} after tie`);
+        setCurrentRound(prev => prev + 1);
+      } else {
+        // End the match because max rounds reached
+        console.log(`Max rounds (${maxRounds}) reached after tie. Ending match.`);
+        setShowMatchComplete(true);
+        
+        if (updatedScore.player1 > updatedScore.player2) {
+          setMatchWinner(gameSettings.player1Symbol || 'X');
+        } else if (updatedScore.player2 > updatedScore.player1) {
+          setMatchWinner(gameSettings.player2Symbol || 'O');
+        } else {
+          setMatchWinner(null); // Tie
+        }
+        
+        saveMatchToLeaderboard();
+      }
+    }, 800);
   };
   
   // Reset the game completely
@@ -462,7 +520,7 @@ export default function TicTacToeScreen() {
                   : 'The match ended in a tie!'}
               </ThemedText>
               <ThemedText style={styles.scoreText}>
-                {gameSettings.player1Name || 'Player 1'} ({gameSettings.player1Symbol}): {score.player1} - {gameSettings.player2Name || 'Player 2'} ({gameSettings.player2Symbol}): {score.player2}
+                Final Score: {gameSettings.player1Name || 'Player 1'} ({gameSettings.player1Symbol || 'X'}): {score.player1} - {gameSettings.player2Name || 'Player 2'} ({gameSettings.player2Symbol || 'O'}): {score.player2}
               </ThemedText>
               <Pressable 
                 style={[styles.newMatchButton, { backgroundColor: buttonBgColor }]} 

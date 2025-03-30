@@ -64,24 +64,69 @@ export function ScoreBoard({
     };
   }, [isPlayer1Turn, colorScheme, player1Color, player2Color]);
   
+  // Function to render player symbol with proper font size
+  const renderPlayerSymbol = (symbol: string) => {
+    // Adjust font size based on if it's a single character or emoji
+    const isEmoji = symbol !== 'X' && symbol !== 'O';
+    const fontSize = isEmoji ? 22 : 24;
+    
+    return (
+      <ThemedText style={{
+        fontSize,
+        fontWeight: 'bold',
+        textAlign: 'center',
+      }}>
+        {symbol}
+      </ThemedText>
+    );
+  };
+  
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.scoresContainer}>
-        <ScoreItem label={`${player1Name} (${player1Symbol})`} score={score.player1} color={player1Color} textColor={player1TextColor} />
+        <ScoreItem 
+          label={player1Name} 
+          symbol={player1Symbol}
+          score={score.player1} 
+          color={player1Color} 
+          textColor={player1TextColor} 
+        />
         <ScoreItem label="Ties" score={score.ties} color={tieColor} textColor="#FFFFFF" />
-        <ScoreItem label={`${player2Name} (${player2Symbol})`} score={score.player2} color={player2Color} textColor="#FFFFFF" />
+        <ScoreItem 
+          label={player2Name} 
+          symbol={player2Symbol}
+          score={score.player2} 
+          color={player2Color} 
+          textColor="#FFFFFF" 
+        />
       </ThemedView>
       
       <ThemedView style={styles.turnContainer}>
         <ThemedText style={styles.turnText}>Current turn</ThemedText>
         <View style={[styles.indicatorTrack, { backgroundColor: trackColor }]}>
           <Animated.View style={[styles.indicator, indicatorStyle]} />
-          <ThemedText style={[styles.playerX, { 
-            color: isPlayer1Turn ? player1TextColor : colors.text 
-          }]}>{player1Symbol}</ThemedText>
-          <ThemedText style={[styles.playerO, { 
-            color: !isPlayer1Turn ? player2TextColor : colors.text 
-          }]}>{player2Symbol}</ThemedText>
+          <View style={styles.playerX}>
+            <ThemedText style={[
+              styles.playerSymbol, 
+              { 
+                color: isPlayer1Turn ? player1TextColor : colors.text,
+                fontSize: player1Symbol.length > 1 ? 22 : 24
+              }
+            ]}>
+              {player1Symbol}
+            </ThemedText>
+          </View>
+          <View style={styles.playerO}>
+            <ThemedText style={[
+              styles.playerSymbol, 
+              { 
+                color: !isPlayer1Turn ? player2TextColor : colors.text,
+                fontSize: player2Symbol.length > 1 ? 22 : 24
+              }
+            ]}>
+              {player2Symbol}
+            </ThemedText>
+          </View>
         </View>
       </ThemedView>
       
@@ -101,12 +146,15 @@ type ScoreItemProps = {
   score: number;
   color: string;
   textColor?: string;
+  symbol?: string;
 };
 
-function ScoreItem({ label, score, color, textColor = '#FFFFFF' }: ScoreItemProps) {
+function ScoreItem({ label, score, color, textColor = '#FFFFFF', symbol }: ScoreItemProps) {
   return (
     <View style={styles.scoreItem}>
-      <ThemedText style={styles.scoreLabel}>{label}</ThemedText>
+      <ThemedText style={styles.scoreLabel}>
+        {label} {symbol && <ThemedText style={styles.symbolText}>{symbol}</ThemedText>}
+      </ThemedText>
       <View style={[styles.scoreValue, { backgroundColor: color }]}>
         <ThemedText style={[styles.scoreNumber, { color: textColor }]}>{score}</ThemedText>
       </View>
@@ -166,16 +214,19 @@ const styles = StyleSheet.create({
   },
   playerX: {
     flex: 1,
-    textAlign: 'center',
-    lineHeight: 40,
-    fontWeight: 'bold',
-    fontSize: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   playerO: {
     flex: 1,
-    textAlign: 'center',
-    lineHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playerSymbol: {
     fontWeight: 'bold',
+    fontSize: 24,
+  },
+  symbolText: {
     fontSize: 18,
   },
   lastWinnerContainer: {
