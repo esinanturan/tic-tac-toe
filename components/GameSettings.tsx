@@ -15,7 +15,11 @@ type GameSettings = {
   gameMode: string;
   enableTimer?: boolean;
   enableSounds?: boolean;
-  playerName?: string;
+  playerName?: string; // Legacy field
+  player1Name?: string;
+  player2Name?: string;
+  player1Symbol?: string;
+  player2Symbol?: string;
   maxRounds?: number;
 };
 
@@ -33,11 +37,12 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
   
   // Define theme-aware colors
   const buttonSelectedBg = colors.tint;
-  const buttonSelectedText = '#FFF';
+  const buttonSelectedText = isDark ? '#000000' : '#FFFFFF';
   const buttonBorderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
   const switchTrackColorOn = colors.tint;
   const switchTrackColorOff = isDark ? '#3A3A3C' : '#767577';
   const switchThumbColor = isDark ? '#FFFFFF' : '#FFFFFF';
+  const headerTextColor = colors.text; // Use theme text color for header
   
   // Animation values
   const rotateValue = useSharedValue(0);
@@ -141,7 +146,7 @@ export function GameSettings({ settings, onUpdateSettings }: GameSettingsProps) 
   return (
     <ThemedView style={styles.container}>
       <Pressable style={styles.header} onPress={toggleExpand}>
-        <ThemedText type="subtitle">Game Settings</ThemedText>
+        <ThemedText type="subtitle" style={{ color: headerTextColor }}>Game Settings</ThemedText>
         <Animated.View style={iconStyle}>
           <Ionicons 
             name="chevron-down" 

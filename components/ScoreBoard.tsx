@@ -14,9 +14,21 @@ type ScoreBoardProps = {
   };
   currentPlayer: string;
   lastWinner: string | null;
+  player1Name?: string;
+  player2Name?: string;
+  player1Symbol?: string;
+  player2Symbol?: string;
 };
 
-export function ScoreBoard({ score, currentPlayer, lastWinner }: ScoreBoardProps) {
+export function ScoreBoard({ 
+  score, 
+  currentPlayer, 
+  lastWinner,
+  player1Name = 'Player 1',
+  player2Name = 'Player 2',
+  player1Symbol = 'X',
+  player2Symbol = 'O'
+}: ScoreBoardProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
@@ -27,45 +39,56 @@ export function ScoreBoard({ score, currentPlayer, lastWinner }: ScoreBoardProps
   const tieColor = isDark ? '#636366' : '#8E8E93';
   const trackColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
   
+  // Define text colors for current turn indicator with proper contrast
+  const player1TextColor = isDark ? '#000000' : '#FFFFFF'; // Black text on blue in dark mode
+  const player2TextColor = '#FFFFFF'; // White text on orange works in both modes
+  
+  // Determine if current player is player 1
+  const isPlayer1Turn = currentPlayer === player1Symbol;
+  
   // Animated style for the player indicator
   const indicatorStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: withTiming(
-        currentPlayer === 'X' ? player1Color : player2Color, 
+        isPlayer1Turn ? player1Color : player2Color, 
         { duration: 300 }
       ),
       transform: [
         { 
           translateX: withTiming(
-            currentPlayer === 'X' ? 0 : 100, 
+            isPlayer1Turn ? 0 : 70, 
             { duration: 300 }
           ) 
         }
       ],
     };
-  }, [currentPlayer, colorScheme, player1Color, player2Color]);
+  }, [isPlayer1Turn, colorScheme, player1Color, player2Color]);
   
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.scoresContainer}>
-        <ScoreItem label="Player 1 (X)" score={score.player1} color={player1Color} />
-        <ScoreItem label="Ties" score={score.ties} color={tieColor} />
-        <ScoreItem label="Player 2 (O)" score={score.player2} color={player2Color} />
+        <ScoreItem label={`${player1Name} (${player1Symbol})`} score={score.player1} color={player1Color} textColor={player1TextColor} />
+        <ScoreItem label="Ties" score={score.ties} color={tieColor} textColor="#FFFFFF" />
+        <ScoreItem label={`${player2Name} (${player2Symbol})`} score={score.player2} color={player2Color} textColor="#FFFFFF" />
       </ThemedView>
       
       <ThemedView style={styles.turnContainer}>
         <ThemedText style={styles.turnText}>Current turn</ThemedText>
         <View style={[styles.indicatorTrack, { backgroundColor: trackColor }]}>
           <Animated.View style={[styles.indicator, indicatorStyle]} />
-          <ThemedText style={[styles.playerX, { color: currentPlayer === 'X' ? '#FFF' : colors.text }]}>X</ThemedText>
-          <ThemedText style={[styles.playerO, { color: currentPlayer === 'O' ? '#FFF' : colors.text }]}>O</ThemedText>
+          <ThemedText style={[styles.playerX, { 
+            color: isPlayer1Turn ? player1TextColor : colors.text 
+          }]}>{player1Symbol}</ThemedText>
+          <ThemedText style={[styles.playerO, { 
+            color: !isPlayer1Turn ? player2TextColor : colors.text 
+          }]}>{player2Symbol}</ThemedText>
         </View>
       </ThemedView>
       
       {lastWinner && (
         <ThemedView style={styles.lastWinnerContainer}>
           <ThemedText style={styles.lastWinnerText}>
-            Last winner: {lastWinner === 'X' ? 'Player 1 (X)' : 'Player 2 (O)'}
+            Last winner: {lastWinner === player1Symbol ? `${player1Name} (${player1Symbol})` : `${player2Name} (${player2Symbol})`}
           </ThemedText>
         </ThemedView>
       )}
@@ -77,14 +100,15 @@ type ScoreItemProps = {
   label: string;
   score: number;
   color: string;
+  textColor?: string;
 };
 
-function ScoreItem({ label, score, color }: ScoreItemProps) {
+function ScoreItem({ label, score, color, textColor = '#FFFFFF' }: ScoreItemProps) {
   return (
     <View style={styles.scoreItem}>
       <ThemedText style={styles.scoreLabel}>{label}</ThemedText>
       <View style={[styles.scoreValue, { backgroundColor: color }]}>
-        <ThemedText style={styles.scoreNumber}>{score}</ThemedText>
+        <ThemedText style={[styles.scoreNumber, { color: textColor }]}>{score}</ThemedText>
       </View>
     </View>
   );
@@ -117,7 +141,6 @@ const styles = StyleSheet.create({
   scoreNumber: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   turnContainer: {
     alignItems: 'center',

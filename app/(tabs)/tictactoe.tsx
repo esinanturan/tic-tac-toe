@@ -18,8 +18,11 @@ type GameSettingsType = {
   gameMode: string;
   enableTimer?: boolean;
   enableSounds?: boolean;
-  playerName?: string;
+  player1Name?: string;
+  player2Name?: string;
   maxRounds?: number;
+  player1Symbol?: string;
+  player2Symbol?: string;
 };
 
 type ScoreType = {
@@ -59,8 +62,11 @@ export default function TicTacToeScreen() {
     gameMode: 'local',
     enableTimer: true,
     enableSounds: true,
-    playerName: '',
+    player1Name: '',
+    player2Name: '',
     maxRounds: 5, // Default to 5 rounds
+    player1Symbol: 'X',
+    player2Symbol: 'O'
   });
   
   // Previous settings for comparison
@@ -73,8 +79,10 @@ export default function TicTacToeScreen() {
   // Check if match is complete after a round
   useEffect(() => {
     const maxRounds = gameSettings.maxRounds || 5;
+    const player1Symbol = gameSettings.player1Symbol || 'X';
+    const player2Symbol = gameSettings.player2Symbol || 'O';
     
-    console.log(`Round ${currentRound}/${maxRounds}: Player 1 (X): ${score.player1}, Player 2 (O): ${score.player2}`);
+    console.log(`Round ${currentRound}/${maxRounds}: Player 1 (${player1Symbol}): ${score.player1}, Player 2 (${player2Symbol}): ${score.player2}`);
     
     // Only check if we've played at least one game
     if (score.player1 > 0 || score.player2 > 0 || score.ties > 0) {
@@ -84,19 +92,19 @@ export default function TicTacToeScreen() {
       console.log(`Rounds needed to win: ${roundsNeededToWin}`);
       
       if (score.player1 >= roundsNeededToWin) {
-        // Player 1 (X) wins the match
-        console.log('Player 1 (X) wins the match!');
+        // Player 1 wins the match
+        console.log(`Player 1 (${player1Symbol}) wins the match!`);
         setShowMatchComplete(true);
-        setMatchWinner('X');
+        setMatchWinner(player1Symbol);
         
         // Save match result to leaderboard
         saveMatchToLeaderboard();
       }
       else if (score.player2 >= roundsNeededToWin) {
-        // Player 2 (O) wins the match
-        console.log('Player 2 (O) wins the match!');
+        // Player 2 wins the match
+        console.log(`Player 2 (${player2Symbol}) wins the match!`);
         setShowMatchComplete(true);
-        setMatchWinner('O');
+        setMatchWinner(player2Symbol);
         
         // Save match result to leaderboard
         saveMatchToLeaderboard();
@@ -106,11 +114,11 @@ export default function TicTacToeScreen() {
         // Match is complete, determine winner based on score
         setShowMatchComplete(true);
         if (score.player1 > score.player2) {
-          setMatchWinner('X');
-          console.log('Player 1 (X) wins by score after all rounds');
+          setMatchWinner(player1Symbol);
+          console.log(`Player 1 (${player1Symbol}) wins by score after all rounds`);
         } else if (score.player2 > score.player1) {
-          setMatchWinner('O');
-          console.log('Player 2 (O) wins by score after all rounds');
+          setMatchWinner(player2Symbol);
+          console.log(`Player 2 (${player2Symbol}) wins by score after all rounds`);
         } else {
           setMatchWinner(null); // Tie
           console.log('Match ended in a tie');
@@ -120,7 +128,7 @@ export default function TicTacToeScreen() {
         saveMatchToLeaderboard();
       }
     }
-  }, [currentRound, score, gameSettings.maxRounds]);
+  }, [currentRound, score, gameSettings]);
   
   // Load game settings from AsyncStorage
   const loadGameSettings = async () => {
@@ -268,11 +276,25 @@ export default function TicTacToeScreen() {
   
   // Reset the match after completion
   const resetMatch = () => {
+    // Reset all game state
     setScore({ player1: 0, player2: 0, ties: 0 });
     setCurrentRound(1);
     setShowMatchComplete(false);
     setMatchWinner(null);
-    resetGame();
+    setTimer(0);
+    setGameStarted(false);
+    setTimerActive(false);
+    
+    // Make sure the player starts as Player 1's symbol
+    setGameSettings(prev => ({
+      ...prev,
+      currentPlayer: prev.player1Symbol || 'X'
+    }));
+    
+    // Clear any saved round data
+    AsyncStorage.removeItem('roundsData').catch(err => 
+      console.error('Failed to clear round data:', err)
+    );
   };
   
   // Save single round data to leaderboard
@@ -282,13 +304,17 @@ export default function TicTacToeScreen() {
       const roundsDataStr = await AsyncStorage.getItem('roundsData');
       const roundsData = roundsDataStr ? JSON.parse(roundsDataStr) : [];
       
-      // Get player display name
-      const playerLabel = player === 'X' ? 'Player 1' : 'Player 2';
+      // Determine if this is player 1 or player 2 based on the symbol
+      const player1Symbol = gameSettings.player1Symbol || 'X';
+      const player2Symbol = gameSettings.player2Symbol || 'O';
+      const isPlayer1 = player === player1Symbol;
+      const playerName = isPlayer1 ? gameSettings.player1Name || 'Player 1' : gameSettings.player2Name || 'Player 2';
+      const playerLabel = isPlayer1 ? 'Player 1' : 'Player 2';
       
       // Add new entry
       const newRoundData = {
         player: playerLabel,
-        playerName: gameSettings.playerName || playerLabel,
+        playerName: playerName,
         gridSize: gameSettings.gridSize,
         winLength: gameSettings.winLength,
         time,
@@ -298,7 +324,7 @@ export default function TicTacToeScreen() {
       };
       
       roundsData.push(newRoundData);
-      console.log(`Round ${currentRound} won by ${playerLabel} (${player}) in ${time} seconds`);
+      console.log(`Round ${currentRound} won by ${playerName} (${player}) in ${time} seconds`);
       
       // Save back to storage
       await AsyncStorage.setItem('roundsData', JSON.stringify(roundsData));
@@ -316,8 +342,11 @@ export default function TicTacToeScreen() {
       const leaderboardStr = await AsyncStorage.getItem('leaderboard');
       const leaderboard: LeaderboardEntry[] = leaderboardStr ? JSON.parse(leaderboardStr) : [];
       
+      const player1Symbol = gameSettings.player1Symbol || 'X';
+      const player2Symbol = gameSettings.player2Symbol || 'O';
+      
       // Determine winner
-      const winner = score.player1 > score.player2 ? 'X' : score.player2 > score.player1 ? 'O' : null;
+      const winner = score.player1 > score.player2 ? player1Symbol : score.player2 > score.player1 ? player2Symbol : null;
       
       // Only save if there's a winner
       if (winner) {
@@ -325,10 +354,14 @@ export default function TicTacToeScreen() {
         const roundsDataStr = await AsyncStorage.getItem('roundsData');
         const roundsData = roundsDataStr ? JSON.parse(roundsDataStr) : [];
         
+        // Get player name based on symbol
+        const isPlayer1 = winner === player1Symbol;
+        const playerName = isPlayer1 ? gameSettings.player1Name || 'Player 1' : gameSettings.player2Name || 'Player 2';
+        const playerLabel = isPlayer1 ? 'Player 1' : 'Player 2';
+        
         // Calculate average time for winning rounds
         const winnerRounds = roundsData.filter((r: any) => 
-          r.player === (winner === 'X' ? 'Player 1' : 'Player 2') && 
-          r.round <= currentRound
+          r.symbol === winner && r.round <= currentRound
         );
         
         const totalTime = winnerRounds.reduce((sum: number, round: any) => sum + round.time, 0);
@@ -336,8 +369,8 @@ export default function TicTacToeScreen() {
         
         // Add new entry
         const newEntry: LeaderboardEntry = {
-          player: winner === 'X' ? 'Player 1' : 'Player 2',
-          playerName: gameSettings.playerName || (winner === 'X' ? 'Player 1' : 'Player 2'),
+          player: playerLabel,
+          playerName: playerName,
           gridSize: gameSettings.gridSize,
           winLength: gameSettings.winLength,
           time: avgTime,
@@ -384,7 +417,7 @@ export default function TicTacToeScreen() {
   // Theme-aware colors for UI elements
   const sectionBgColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
   const buttonBgColor = colors.tint;
-  const buttonTextColor = '#FFFFFF';
+  const buttonTextColor = isDark ? '#000000' : '#FFFFFF';
   
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -412,6 +445,10 @@ export default function TicTacToeScreen() {
             score={score}
             currentPlayer={gameSettings.currentPlayer}
             lastWinner={lastWinner}
+            player1Name={gameSettings.player1Name || 'Player 1'}
+            player2Name={gameSettings.player2Name || 'Player 2'}
+            player1Symbol={gameSettings.player1Symbol || 'X'}
+            player2Symbol={gameSettings.player2Symbol || 'O'}
           />
           
           {showMatchComplete ? (
@@ -419,11 +456,13 @@ export default function TicTacToeScreen() {
               <ThemedText type="title">Match Complete!</ThemedText>
               <ThemedText style={styles.matchResultText}>
                 {matchWinner 
-                  ? `${matchWinner === 'X' ? 'Player 1 (X)' : 'Player 2 (O)'} wins the match!`
+                  ? `${matchWinner === gameSettings.player1Symbol 
+                      ? (gameSettings.player1Name || 'Player 1') + ` (${gameSettings.player1Symbol})` 
+                      : (gameSettings.player2Name || 'Player 2') + ` (${gameSettings.player2Symbol})`} wins the match!`
                   : 'The match ended in a tie!'}
               </ThemedText>
               <ThemedText style={styles.scoreText}>
-                Player 1 (X): {score.player1} - Player 2 (O): {score.player2}
+                {gameSettings.player1Name || 'Player 1'} ({gameSettings.player1Symbol}): {score.player1} - {gameSettings.player2Name || 'Player 2'} ({gameSettings.player2Symbol}): {score.player2}
               </ThemedText>
               <Pressable 
                 style={[styles.newMatchButton, { backgroundColor: buttonBgColor }]} 
@@ -442,6 +481,10 @@ export default function TicTacToeScreen() {
               onGameStart={handleGameStart}
               onGameReset={resetGame}
               enableSounds={gameSettings.enableSounds}
+              player1Name={gameSettings.player1Name || 'Player 1'}
+              player2Name={gameSettings.player2Name || 'Player 2'}
+              player1Symbol={gameSettings.player1Symbol || 'X'}
+              player2Symbol={gameSettings.player2Symbol || 'O'}
               onChangeTurn={(player) => setGameSettings(prev => ({ ...prev, currentPlayer: player }))}
             />
           )}

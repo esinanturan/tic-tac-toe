@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, ScrollView, Text, FlatList, View } from 'react-native';
+import { StyleSheet, ScrollView, Text, FlatList, View, Pressable, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +30,14 @@ export default function LeaderboardScreen() {
   const itemBgColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)';
   const rankBgColor = isDark ? 'rgba(0,122,255,0.7)' : 'rgba(0,122,255,0.8)';
   const timeTextColor = colors.tint;
+  // Ensure good opacity for secondary text in dark mode
+  const secondaryTextOpacity = isDark ? 0.8 : 0.7;
+  // Title text should be more visible
+  const titleColor = isDark ? 'rgba(255,255,255,0.95)' : colors.text;
+  
+  // Theme-aware colors for the clear button
+  const clearButtonBg = isDark ? 'rgba(255,59,48,0.8)' : '#FF3B30'; // Red color
+  const clearButtonTextColor = '#FFFFFF';
   
   // Load leaderboard data when the component mounts or when the screen comes into focus
   useFocusEffect(
@@ -110,10 +118,10 @@ export default function LeaderboardScreen() {
           </ThemedText>
         </View>
         <View style={styles.row}>
-          <ThemedText style={styles.gridInfo}>
+          <ThemedText style={[styles.gridInfo, { opacity: secondaryTextOpacity }]}>
             {item.gridSize}x{item.gridSize} grid ({item.winLength} to win)
           </ThemedText>
-          <ThemedText style={styles.dateText}>
+          <ThemedText style={[styles.dateText, { opacity: secondaryTextOpacity }]}>
             {formatDate(item.date)}
           </ThemedText>
         </View>
@@ -132,25 +140,54 @@ export default function LeaderboardScreen() {
     }
   };
   
+  // Confirm and clear leaderboard
+  const confirmClearLeaderboard = () => {
+    Alert.alert(
+      'Clear Leaderboard',
+      'Are you sure you want to clear all leaderboard data? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: clearLeaderboard
+        }
+      ]
+    );
+  };
+  
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ThemedView style={styles.container}>
-        <ThemedText type="title" style={styles.title}>Leaderboard</ThemedText>
-        <ThemedText style={styles.subtitle}>Fastest Win Times</ThemedText>
+        <ThemedText type="title" style={[styles.title, { color: titleColor }]}>Leaderboard</ThemedText>
+        <ThemedText style={[styles.subtitle, { opacity: secondaryTextOpacity }]}>Fastest Win Times</ThemedText>
         
         {loading ? (
           <ThemedText style={styles.loadingText}>Loading leaderboard data...</ThemedText>
         ) : leaderboard.length > 0 ? (
-          <FlatList
-            data={leaderboard}
-            renderItem={renderItem}
-            keyExtractor={(item, index) => `leaderboard-${index}`}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
+          <>
+            <FlatList
+              data={leaderboard}
+              renderItem={renderItem}
+              keyExtractor={(item, index) => `leaderboard-${index}`}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+            />
+            <Pressable 
+              style={[styles.clearButton, { backgroundColor: clearButtonBg }]}
+              onPress={confirmClearLeaderboard}
+            >
+              <ThemedText style={[styles.clearButtonText, { color: clearButtonTextColor }]}>
+                Clear Leaderboard
+              </ThemedText>
+            </Pressable>
+          </>
         ) : (
           <ThemedView style={[styles.emptyContainer, { backgroundColor: itemBgColor }]}>
-            <ThemedText style={styles.emptyText}>
+            <ThemedText style={[styles.emptyText, { opacity: secondaryTextOpacity }]}>
               No leaderboard entries yet. Start playing to set records!
             </ThemedText>
           </ThemedView>
@@ -240,5 +277,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.7,
     lineHeight: 24,
+  },
+  clearButton: {
+    marginTop: 16,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  clearButtonText: {
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 }); 
