@@ -10,8 +10,8 @@
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "expo lint",
-    "serve-privacy": "serve -s . -l 3000",
-    "privacy": "node serve-privacy.js"
+    "serve-privacy": "serve -s ./web -l 3000",
+    "privacy": "node ./web/serve-privacy.js"
   },
   "jest": {
     "preset": "jest-expo"
