@@ -36,3 +36,12 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+*.aab
+*.apk
+*.ipa
+*.app
+*.dmg
+*.deb
+*.rpm
+*.snap
