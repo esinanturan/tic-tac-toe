@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Switch, Pressable, Alert, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 
@@ -28,6 +31,7 @@ const SYMBOL_OPTIONS = [
 ];
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
@@ -45,6 +49,9 @@ export default function SettingsScreen() {
   const dangerButtonBg = isDark ? 'rgba(255,59,48,0.8)' : '#FF3B30'; // Red color
   const dangerButtonTextColor = '#FFFFFF';
   
+  // Player 2 color (orange for o)
+  const player2Color = isDark ? '#FF9C41' : '#FF9500';
+  
   // Game settings
   const [settings, setSettings] = useState({
     gridSize: 3,
@@ -57,6 +64,10 @@ export default function SettingsScreen() {
     player1Symbol: DEFAULT_SYMBOLS.player1,
     player2Symbol: DEFAULT_SYMBOLS.player2
   });
+  
+  // Add feedback toast for settings changes
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
   
   // Load settings on mount
   useEffect(() => {
@@ -93,13 +104,27 @@ export default function SettingsScreen() {
     }
   };
   
+  // Show feedback to user
+  const showSuccessFeedback = () => {
+    setFeedbackMessage(t('settings.settingsUpdated'));
+    setShowFeedback(true);
+    
+    // Auto-hide feedback after 2 seconds
+    setTimeout(() => {
+      setShowFeedback(false);
+    }, 2000);
+  };
+  
   // Save settings to AsyncStorage
   const saveSettings = async (newSettings: typeof settings) => {
     try {
       await AsyncStorage.setItem('gameSettings', JSON.stringify(newSettings));
       setSettings(newSettings);
+      
+      showSuccessFeedback();
     } catch (error) {
       console.error('Failed to save settings:', error);
+      Alert.alert('Error', 'Failed to save settings. Please try again.');
     }
   };
   
@@ -203,15 +228,15 @@ export default function SettingsScreen() {
   // Confirm and clear leaderboard
   const confirmClearLeaderboard = () => {
     Alert.alert(
-      'Clear Leaderboard',
-      'Are you sure you want to clear all leaderboard data? This action cannot be undone.',
+      t('leaderboard.title'),
+      t('leaderboard.confirmClear'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel'
         },
         {
-          text: 'Clear',
+          text: t('leaderboard.clearButton'),
           style: 'destructive',
           onPress: clearLeaderboardData
         }
@@ -222,42 +247,46 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ThemedView style={styles.container}>
-        <ThemedText type="title" style={styles.title}>Game Settings</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('settings.title')}</ThemedText>
         
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Player Names and Symbols */}
           <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
-            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>Player Settings</ThemedText>
+            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>
+              {t('settings.playerSettings')}
+            </ThemedText>
             
             <View style={styles.inputContainer}>
-              <ThemedText style={styles.inputLabel}>Player 1 Name</ThemedText>
+              <ThemedText style={styles.inputLabel}>{t('settings.player1Name')}</ThemedText>
               <TextInput
                 style={[
-                  styles.input,
-                  {
+                  styles.input, 
+                  { 
                     backgroundColor: inputBgColor,
-                    color: inputTextColor,
-                    borderColor: borderColor
+                    borderColor: borderColor,
+                    color: inputTextColor
                   }
                 ]}
                 value={settings.player1Name}
                 onChangeText={handlePlayer1NameChange}
-                placeholder="Enter Player 1 name"
+                placeholder={t('game.player1')}
                 placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
               />
             </View>
             
             <View style={styles.symbolSelectorContainer}>
-              <ThemedText style={styles.inputLabel}>Player 1 Symbol</ThemedText>
+              <ThemedText style={styles.inputLabel}>{t('settings.selectSymbol')}</ThemedText>
               <View style={styles.symbolsRow}>
                 {SYMBOL_OPTIONS.map(option => (
                   <Pressable
-                    key={`p1-${option.value}`}
+                    key={option.value}
                     style={[
                       styles.symbolButton,
                       { 
-                        backgroundColor: settings.player1Symbol === option.value ? buttonSelectedBg : 'transparent',
-                        borderColor: borderColor
+                        backgroundColor: settings.player1Symbol === option.value ? 
+                          colors.tint : 'transparent',
+                        borderColor: settings.player1Symbol === option.value ? 
+                          colors.tint : borderColor
                       }
                     ]}
                     onPress={() => handlePlayer1SymbolChange(option.value)}
@@ -266,8 +295,8 @@ export default function SettingsScreen() {
                       style={[
                         styles.symbolText, 
                         { 
-                          color: settings.player1Symbol === option.value ? buttonSelectedText : colors.text,
-                          fontSize: option.value.length > 1 ? 16 : 20 // Adjust size for emojis
+                          color: settings.player1Symbol === option.value ? 
+                            isDark ? '#000' : '#fff' : colors.text 
                         }
                       ]}
                     >
@@ -278,37 +307,40 @@ export default function SettingsScreen() {
               </View>
             </View>
             
-            <View style={[styles.divider, { borderColor: borderColor }]} />
+            {/* Player 2 Name and Symbol */}
+            <View style={[styles.divider, { borderBottomColor: borderColor }]} />
             
             <View style={styles.inputContainer}>
-              <ThemedText style={styles.inputLabel}>Player 2 Name</ThemedText>
+              <ThemedText style={styles.inputLabel}>{t('settings.player2Name')}</ThemedText>
               <TextInput
                 style={[
-                  styles.input,
-                  {
+                  styles.input, 
+                  { 
                     backgroundColor: inputBgColor,
-                    color: inputTextColor,
-                    borderColor: borderColor
+                    borderColor: borderColor,
+                    color: inputTextColor
                   }
                 ]}
                 value={settings.player2Name}
                 onChangeText={handlePlayer2NameChange}
-                placeholder="Enter Player 2 name"
+                placeholder={t('game.player2')}
                 placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
               />
             </View>
             
             <View style={styles.symbolSelectorContainer}>
-              <ThemedText style={styles.inputLabel}>Player 2 Symbol</ThemedText>
+              <ThemedText style={styles.inputLabel}>{t('settings.selectSymbol')}</ThemedText>
               <View style={styles.symbolsRow}>
                 {SYMBOL_OPTIONS.map(option => (
                   <Pressable
-                    key={`p2-${option.value}`}
+                    key={option.value}
                     style={[
                       styles.symbolButton,
                       { 
-                        backgroundColor: settings.player2Symbol === option.value ? buttonSelectedBg : 'transparent',
-                        borderColor: borderColor
+                        backgroundColor: settings.player2Symbol === option.value ? 
+                          player2Color : 'transparent',
+                        borderColor: settings.player2Symbol === option.value ? 
+                          player2Color : borderColor
                       }
                     ]}
                     onPress={() => handlePlayer2SymbolChange(option.value)}
@@ -317,8 +349,8 @@ export default function SettingsScreen() {
                       style={[
                         styles.symbolText, 
                         { 
-                          color: settings.player2Symbol === option.value ? buttonSelectedText : colors.text,
-                          fontSize: option.value.length > 1 ? 16 : 20 // Adjust size for emojis
+                          color: settings.player2Symbol === option.value ? 
+                            '#FFFFFF' : colors.text 
                         }
                       ]}
                     >
@@ -330,18 +362,28 @@ export default function SettingsScreen() {
             </View>
           </ThemedView>
           
-          {/* Grid Size Settings */}
+          {/* Grid Size and Win Length, and Rounds */}
           <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
-            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>Grid Size</ThemedText>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>
+                {t('app.title')}
+              </ThemedText>
+            </View>
+            
+            <ThemedText style={[styles.helperText, { marginBottom: 8 }]}>
+              {t('settings.gridSize', { size: settings.gridSize })}
+            </ThemedText>
             <View style={styles.optionsContainer}>
               {gridSizeOptions.map(size => (
                 <Pressable
-                  key={`grid-${size}`}
+                  key={`size-${size}`}
                   style={[
                     styles.optionButton,
                     { 
-                      backgroundColor: settings.gridSize === size ? buttonSelectedBg : 'transparent',
-                      borderColor: borderColor
+                      backgroundColor: settings.gridSize === size ? 
+                        buttonSelectedBg : 'transparent',
+                      borderColor: settings.gridSize === size ? 
+                        buttonSelectedBg : borderColor
                     }
                   ]}
                   onPress={() => handleGridSizeChange(size)}
@@ -349,7 +391,10 @@ export default function SettingsScreen() {
                   <ThemedText 
                     style={[
                       styles.optionText, 
-                      { color: settings.gridSize === size ? buttonSelectedText : colors.text }
+                      { 
+                        color: settings.gridSize === size ? 
+                          buttonSelectedText : colors.text 
+                      }
                     ]}
                   >
                     {size}x{size}
@@ -357,45 +402,43 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
-          </ThemedView>
-          
-          {/* Win Length Settings */}
-          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
-            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>Win Length</ThemedText>
+            
+            <ThemedText style={[styles.helperText, { marginTop: 16, marginBottom: 8 }]}>
+              {t('settings.winLength', { length: settings.winLength })}
+            </ThemedText>
             <View style={styles.optionsContainer}>
-              {Array.from({ length: settings.gridSize }, (_, i) => i + 3)
-                .filter(len => len <= settings.gridSize)
-                .map(length => (
-                  <Pressable
-                    key={`win-${length}`}
+              {Array.from({ length: settings.gridSize }, (_, i) => i + 3).filter(n => n <= settings.gridSize).map(length => (
+                <Pressable
+                  key={`length-${length}`}
+                  style={[
+                    styles.optionButton,
+                    { 
+                      backgroundColor: settings.winLength === length ? 
+                        buttonSelectedBg : 'transparent',
+                      borderColor: settings.winLength === length ? 
+                        buttonSelectedBg : borderColor
+                    }
+                  ]}
+                  onPress={() => handleWinLengthChange(length)}
+                >
+                  <ThemedText 
                     style={[
-                      styles.optionButton,
+                      styles.optionText, 
                       { 
-                        backgroundColor: settings.winLength === length ? buttonSelectedBg : 'transparent',
-                        borderColor: borderColor
+                        color: settings.winLength === length ? 
+                          buttonSelectedText : colors.text 
                       }
                     ]}
-                    onPress={() => handleWinLengthChange(length)}
                   >
-                    <ThemedText 
-                      style={[
-                        styles.optionText, 
-                        { color: settings.winLength === length ? buttonSelectedText : colors.text }
-                      ]}
-                    >
-                      {length}
-                    </ThemedText>
-                  </Pressable>
-                ))}
+                    {length}
+                  </ThemedText>
+                </Pressable>
+              ))}
             </View>
-            <ThemedText style={[styles.helperText, { opacity: isDark ? 0.8 : 0.6 }]}>
-              Number of marks in a row needed to win
+            
+            <ThemedText style={[styles.helperText, { marginTop: 16, marginBottom: 8 }]}>
+              {t('settings.rounds', { rounds: settings.maxRounds })}
             </ThemedText>
-          </ThemedView>
-          
-          {/* Rounds Settings */}
-          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
-            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>Match Rounds</ThemedText>
             <View style={styles.optionsContainer}>
               {roundsOptions.map(rounds => (
                 <Pressable
@@ -403,8 +446,10 @@ export default function SettingsScreen() {
                   style={[
                     styles.optionButton,
                     { 
-                      backgroundColor: settings.maxRounds === rounds ? buttonSelectedBg : 'transparent',
-                      borderColor: borderColor
+                      backgroundColor: settings.maxRounds === rounds ? 
+                        buttonSelectedBg : 'transparent',
+                      borderColor: settings.maxRounds === rounds ? 
+                        buttonSelectedBg : borderColor
                     }
                   ]}
                   onPress={() => handleRoundsChange(rounds)}
@@ -412,7 +457,10 @@ export default function SettingsScreen() {
                   <ThemedText 
                     style={[
                       styles.optionText, 
-                      { color: settings.maxRounds === rounds ? buttonSelectedText : colors.text }
+                      { 
+                        color: settings.maxRounds === rounds ? 
+                          buttonSelectedText : colors.text 
+                      }
                     ]}
                   >
                     {rounds}
@@ -420,17 +468,16 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
-            <ThemedText style={[styles.helperText, { opacity: isDark ? 0.8 : 0.6 }]}>
-              Number of rounds in a complete match
-            </ThemedText>
           </ThemedView>
           
           {/* Game Options */}
           <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
-            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>Game Options</ThemedText>
+            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>
+              {t('settings.gameOptions')}
+            </ThemedText>
             
             <View style={[styles.toggleRow, { borderBottomColor: borderColor }]}>
-              <ThemedText>Enable Timer</ThemedText>
+              <ThemedText>{t('settings.enableTimer')}</ThemedText>
               <Switch
                 value={settings.enableTimer}
                 onValueChange={(value) => handleToggleChange('enableTimer', value)}
@@ -441,7 +488,7 @@ export default function SettingsScreen() {
             </View>
             
             <View style={[styles.toggleRow, { borderBottomColor: borderColor }]}>
-              <ThemedText>Enable Sounds</ThemedText>
+              <ThemedText>{t('settings.enableSounds')}</ThemedText>
               <Switch
                 value={settings.enableSounds}
                 onValueChange={(value) => handleToggleChange('enableSounds', value)}
@@ -452,25 +499,39 @@ export default function SettingsScreen() {
             </View>
           </ThemedView>
           
-          {/* Data Management Section */}
-          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor }]}>
-            <ThemedText type="subtitle" style={{ color: sectionHeaderColor }}>Data Management</ThemedText>
-            
-            <ThemedText style={[styles.helperText, { opacity: isDark ? 0.8 : 0.6, marginBottom: 16 }]}>
-              Clear all game records and leaderboard data
+          {/* Language Selection */}
+          <LanguageSelector />
+          
+          {/* Danger Zone */}
+          <ThemedView style={[styles.section, { backgroundColor: sectionBgColor, marginTop: 24 }]}>
+            <ThemedText type="subtitle" style={[styles.sectionHeader, { color: dangerButtonBg }]}>
+              {t('settings.dangerZone')}
             </ThemedText>
             
-            <Pressable 
+            <Pressable
               style={[styles.dangerButton, { backgroundColor: dangerButtonBg }]}
               onPress={confirmClearLeaderboard}
             >
               <ThemedText style={[styles.dangerButtonText, { color: dangerButtonTextColor }]}>
-                Clear Leaderboard Data
+                {t('leaderboard.clearButton')}
               </ThemedText>
             </Pressable>
           </ThemedView>
         </ScrollView>
       </ThemedView>
+      
+      {/* Feedback Toast */}
+      {showFeedback && (
+        <Animated.View 
+          style={[styles.feedbackToast, { backgroundColor: colors.tint }]}
+          entering={FadeIn.duration(300)}
+          exiting={FadeOut.duration(300)}
+        >
+          <ThemedText style={[styles.feedbackText, { color: isDark ? '#000' : '#fff' }]}>
+            {feedbackMessage}
+          </ThemedText>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -590,5 +651,25 @@ const styles = StyleSheet.create({
   divider: {
     borderBottomWidth: 1,
     marginVertical: 16,
+  },
+  feedbackToast: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  feedbackText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 }); 

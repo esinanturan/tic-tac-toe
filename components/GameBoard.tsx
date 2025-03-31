@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import { Canvas, RoundedRect, Line, Circle, Group, Text, vec, Fill } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useTranslation } from 'react-i18next';
 import Animated, { 
   useSharedValue, 
   withTiming, 
@@ -53,6 +54,7 @@ export function GameBoard({
   player1Symbol = 'X',
   player2Symbol = 'O'
 }: GameBoardProps) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
@@ -645,8 +647,11 @@ export function GameBoard({
         >
           <ThemedText type="subtitle" style={{ color: '#FFFFFF' }}>
             {winningLine.length > 0 
-              ? `${board[winningLine[0][0]][winningLine[0][1]] === player1Symbol ? player1Name : player2Name} (${board[winningLine[0][0]][winningLine[0][1]]}) wins!` 
-              : "It's a tie!"}
+              ? t('game.wins', { 
+                  player: board[winningLine[0][0]][winningLine[0][1]] === player1Symbol ? player1Name : player2Name,
+                  symbol: board[winningLine[0][0]][winningLine[0][1]]
+                })
+              : t('game.tie')}
           </ThemedText>
           <Animated.View 
             style={[
@@ -655,7 +660,9 @@ export function GameBoard({
             ]}
             onTouchEnd={resetGame}
           >
-            <ThemedText style={[styles.buttonText, { color: playAgainTextColor }]}>Play Again</ThemedText>
+            <ThemedText style={[styles.buttonText, { color: playAgainTextColor }]}>
+              {t('game.playAgain')}
+            </ThemedText>
           </Animated.View>
         </Animated.View>
       )}

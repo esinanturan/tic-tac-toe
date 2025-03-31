@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "tick-tack-toe-app",
-    "slug": "tick-tack-toe-app",
+    "slug": "tic-tac-toe-x",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,13 +9,15 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.e.sinanturan.ticktacktoeapp"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#090909"
+      },
+      "package": "com.e.sinanturan.ticktacktoeapp"
     },
     "web": {
       "bundler": "metro",
@@ -30,12 +32,21 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#090909"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "58048090-e0f8-4d29-8538-e27b49d38ea9"
+      }
+    },
+    "owner": "e.sinanturan"
   }
 }

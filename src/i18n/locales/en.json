@@ -1,0 +1,70 @@
+{
+  "app": {
+    "title": "Tic Tac Toe"
+  },
+  "game": {
+    "round": "Round {{current}} of {{total}}",
+    "time": "Time: {{time}}",
+    "player1": "Player 1",
+    "player2": "Player 2",
+    "tie": "It's a tie!",
+    "wins": "{{player}} ({{symbol}}) wins!",
+    "playAgain": "Play Again",
+    "currentTurn": "Current turn",
+    "keepPlaying": "Keep Playing",
+    "resetGame": "Reset Game"
+  },
+  "matchComplete": {
+    "title": "Match Complete!",
+    "playerWins": "{{player}} ({{symbol}}) wins the match!",
+    "tie": "The match ended in a tie!",
+    "finalScore": "Final Score: {{player1}} ({{symbol1}}): {{score1}} - {{player2}} ({{symbol2}}): {{score2}}",
+    "newMatch": "New Match"
+  },
+  "settings": {
+    "title": "Settings",
+    "gridSize": "Grid Size: {{size}}x{{size}}",
+    "winLength": "Win Length: {{length}}",
+    "rounds": "Rounds: {{rounds}}",
+    "timer": "Timer: {{status}}",
+    "on": "On",
+    "off": "Off",
+    "hint": "Go to Settings tab to change these settings",
+    "playerSettings": "Player Settings",
+    "gameOptions": "Game Options",
+    "enableTimer": "Enable Timer",
+    "enableSounds": "Enable Sounds",
+    "player1Name": "Player 1 Name",
+    "player2Name": "Player 2 Name",
+    "selectSymbol": "Select Symbol",
+    "dangerZone": "Danger Zone",
+    "settingsUpdated": "Settings updated successfully!",
+    "gridSizeLabel": "Grid Size",
+    "winLengthLabel": "Win Length",
+    "roundsLabel": "Rounds",
+    "timerLabel": "Timer"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "clearButton": "Clear Leaderboard",
+    "confirmClear": "Are you sure you want to clear the leaderboard?",
+    "noData": "No records yet. Play some games!",
+    "time": "Time",
+    "player": "Player",
+    "date": "Date",
+    "fastestWinTimes": "Fastest Win Times",
+    "loading": "Loading...",
+    "gridInfo": "{{size}}x{{size}} grid ({{length}} to win)"
+  },
+  "language": {
+    "select": "Select Language",
+    "en": "English",
+    "es": "Spanish",
+    "tr": "Turkish"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "clear": "Clear",
+    "loading": "Loading..."
+  }
+} 

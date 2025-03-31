@@ -1,0 +1,70 @@
+{
+  "app": {
+    "title": "Tic Tac Toe"
+  },
+  "game": {
+    "round": "Tur {{current}} / {{total}}",
+    "time": "Süre: {{time}}",
+    "player1": "Oyuncu 1",
+    "player2": "Oyuncu 2",
+    "tie": "Berabere!",
+    "wins": "{{player}} ({{symbol}}) kazandı!",
+    "playAgain": "Tekrar Oyna",
+    "currentTurn": "Şimdiki sıra",
+    "keepPlaying": "Oynamaya Devam Et",
+    "resetGame": "Oyunu Sıfırla"
+  },
+  "matchComplete": {
+    "title": "Maç Tamamlandı!",
+    "playerWins": "{{player}} ({{symbol}}) maçı kazandı!",
+    "tie": "Maç berabere bitti!",
+    "finalScore": "Sonuç: {{player1}} ({{symbol1}}): {{score1}} - {{player2}} ({{symbol2}}): {{score2}}",
+    "newMatch": "Yeni Maç"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "gridSize": "Izgara Boyutu: {{size}}x{{size}}",
+    "winLength": "Kazanma Uzunluğu: {{length}}",
+    "rounds": "Turlar: {{rounds}}",
+    "timer": "Zamanlayıcı: {{status}}",
+    "on": "Açık",
+    "off": "Kapalı",
+    "hint": "Ayarları değiştirmek için Ayarlar sekmesine gidin",
+    "playerSettings": "Oyuncu Ayarları",
+    "gameOptions": "Oyun Seçenekleri",
+    "enableTimer": "Zamanlayıcıyı Etkinleştir",
+    "enableSounds": "Sesleri Etkinleştir",
+    "player1Name": "Oyuncu 1 Adı",
+    "player2Name": "Oyuncu 2 Adı",
+    "selectSymbol": "Sembol Seç",
+    "dangerZone": "Tehlikeli Bölge",
+    "settingsUpdated": "Ayarlar başarıyla güncellendi!",
+    "gridSizeLabel": "Izgara",
+    "winLengthLabel": "Kazanma",
+    "roundsLabel": "Turlar",
+    "timerLabel": "Zamanlayıcı"
+  },
+  "leaderboard": {
+    "title": "Skor Tablosu",
+    "clearButton": "Tabloyu Temizle",
+    "confirmClear": "Skor tablosunu temizlemek istediğinizden emin misiniz?",
+    "noData": "Henüz kayıt yok. Biraz oyun oynayın!",
+    "time": "Süre",
+    "player": "Oyuncu",
+    "date": "Tarih",
+    "fastestWinTimes": "En Hızlı Kazanma Süreleri",
+    "loading": "Yükleniyor...",
+    "gridInfo": "{{size}}x{{size}} ızgara (kazanmak için {{length}})"
+  },
+  "language": {
+    "select": "Dil Seçimi",
+    "en": "İngilizce",
+    "es": "İspanyolca",
+    "tr": "Türkçe"
+  },
+  "common": {
+    "cancel": "İptal",
+    "clear": "Temizle",
+    "loading": "Yükleniyor..."
+  }
+} 

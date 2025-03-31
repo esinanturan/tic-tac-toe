@@ -3,6 +3,7 @@ import { StyleSheet, ScrollView, Text, FlatList, View, Pressable, Alert } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -20,6 +21,7 @@ type LeaderboardEntry = {
 };
 
 export default function LeaderboardScreen() {
+  const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
@@ -119,7 +121,7 @@ export default function LeaderboardScreen() {
         </View>
         <View style={styles.row}>
           <ThemedText style={[styles.gridInfo, { opacity: secondaryTextOpacity }]}>
-            {item.gridSize}x{item.gridSize} grid ({item.winLength} to win)
+            {t('leaderboard.gridInfo', { size: item.gridSize, length: item.winLength })}
           </ThemedText>
           <ThemedText style={[styles.dateText, { opacity: secondaryTextOpacity }]}>
             {formatDate(item.date)}
@@ -143,15 +145,15 @@ export default function LeaderboardScreen() {
   // Confirm and clear leaderboard
   const confirmClearLeaderboard = () => {
     Alert.alert(
-      'Clear Leaderboard',
-      'Are you sure you want to clear all leaderboard data? This action cannot be undone.',
+      t('leaderboard.title'),
+      t('leaderboard.confirmClear'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel'
         },
         {
-          text: 'Clear',
+          text: t('leaderboard.clearButton'),
           style: 'destructive',
           onPress: clearLeaderboard
         }
@@ -162,11 +164,15 @@ export default function LeaderboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ThemedView style={styles.container}>
-        <ThemedText type="title" style={[styles.title, { color: titleColor }]}>Leaderboard</ThemedText>
-        <ThemedText style={[styles.subtitle, { opacity: secondaryTextOpacity }]}>Fastest Win Times</ThemedText>
+        <ThemedText type="title" style={[styles.title, { color: titleColor }]}>
+          {t('leaderboard.title')}
+        </ThemedText>
+        <ThemedText style={[styles.subtitle, { opacity: secondaryTextOpacity }]}>
+          {t('leaderboard.fastestWinTimes')}
+        </ThemedText>
         
         {loading ? (
-          <ThemedText style={styles.loadingText}>Loading leaderboard data...</ThemedText>
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
         ) : leaderboard.length > 0 ? (
           <>
             <FlatList
@@ -181,14 +187,14 @@ export default function LeaderboardScreen() {
               onPress={confirmClearLeaderboard}
             >
               <ThemedText style={[styles.clearButtonText, { color: clearButtonTextColor }]}>
-                Clear Leaderboard
+                {t('leaderboard.clearButton')}
               </ThemedText>
             </Pressable>
           </>
         ) : (
           <ThemedView style={[styles.emptyContainer, { backgroundColor: itemBgColor }]}>
             <ThemedText style={[styles.emptyText, { opacity: secondaryTextOpacity }]}>
-              No leaderboard entries yet. Start playing to set records!
+              {t('leaderboard.noData')}
             </ThemedText>
           </ThemedView>
         )}

@@ -1,19 +1,26 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
+// Default export is required for Expo Router layouts
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { t, i18n } = useTranslation();
+  
+  // Force UI update when language changes
+  useEffect(() => {
+    // This is just to ensure the component re-renders when language changes
+  }, [i18n.language]);
 
   return (
     <Tabs
-      initialRouteName="tictactoe"
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
@@ -28,24 +35,24 @@ export default function TabLayout() {
         }),
       }}>
       <Tabs.Screen
-        name="tictactoe"
+        name="index"
         options={{
-          title: 'Game',
-          tabBarIcon: ({ color }) => <Ionicons name="grid" size={24} color={color} />,
+          title: t('app.title'),
+          tabBarIcon: ({ color }) => <Ionicons name="game-controller" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: 'Leaderboard',
+          title: t('leaderboard.title'),
           tabBarIcon: ({ color }) => <Ionicons name="trophy" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={24} color={color} />,
+          title: t('settings.title'),
+          tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
         }}
       />
     </Tabs>

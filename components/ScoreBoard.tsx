@@ -5,6 +5,7 @@ import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 type ScoreBoardProps = {
   score: {
@@ -29,6 +30,7 @@ export function ScoreBoard({
   player1Symbol = 'X',
   player2Symbol = 'O'
 }: ScoreBoardProps) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
@@ -91,7 +93,7 @@ export function ScoreBoard({
           color={player1Color} 
           textColor={player1TextColor} 
         />
-        <ScoreItem label="Ties" score={score.ties} color={tieColor} textColor="#FFFFFF" />
+        <ScoreItem label={t('game.tie')} score={score.ties} color={tieColor} textColor="#FFFFFF" />
         <ScoreItem 
           label={player2Name} 
           symbol={player2Symbol}
@@ -102,7 +104,7 @@ export function ScoreBoard({
       </ThemedView>
       
       <ThemedView style={styles.turnContainer}>
-        <ThemedText style={styles.turnText}>Current turn</ThemedText>
+        <ThemedText style={styles.turnText}>{t('game.currentTurn')}</ThemedText>
         <View style={[styles.indicatorTrack, { backgroundColor: trackColor }]}>
           <Animated.View style={[styles.indicator, indicatorStyle]} />
           <View style={styles.playerX}>
@@ -133,7 +135,10 @@ export function ScoreBoard({
       {lastWinner && (
         <ThemedView style={styles.lastWinnerContainer}>
           <ThemedText style={styles.lastWinnerText}>
-            Last winner: {lastWinner === player1Symbol ? `${player1Name} (${player1Symbol})` : `${player2Name} (${player2Symbol})`}
+            {lastWinner === player1Symbol 
+              ? t('game.wins', { player: player1Name, symbol: player1Symbol })
+              : t('game.wins', { player: player2Name, symbol: player2Symbol })
+            }
           </ThemedText>
         </ThemedView>
       )}

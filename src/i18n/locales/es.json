@@ -1,0 +1,70 @@
+{
+  "app": {
+    "title": "Tres en Raya"
+  },
+  "game": {
+    "round": "Ronda {{current}} de {{total}}",
+    "time": "Tiempo: {{time}}",
+    "player1": "Jugador 1",
+    "player2": "Jugador 2",
+    "tie": "¡Es un empate!",
+    "wins": "¡{{player}} ({{symbol}}) gana!",
+    "playAgain": "Jugar de Nuevo",
+    "currentTurn": "Turno actual",
+    "keepPlaying": "Seguir Jugando",
+    "resetGame": "Reiniciar Juego"
+  },
+  "matchComplete": {
+    "title": "¡Partida Completa!",
+    "playerWins": "¡{{player}} ({{symbol}}) gana la partida!",
+    "tie": "¡La partida terminó en empate!",
+    "finalScore": "Puntuación Final: {{player1}} ({{symbol1}}): {{score1}} - {{player2}} ({{symbol2}}): {{score2}}",
+    "newMatch": "Nueva Partida"
+  },
+  "settings": {
+    "title": "Configuración",
+    "gridSize": "Tamaño de Cuadrícula: {{size}}x{{size}}",
+    "winLength": "Longitud para Ganar: {{length}}",
+    "rounds": "Rondas: {{rounds}}",
+    "timer": "Temporizador: {{status}}",
+    "on": "Activado",
+    "off": "Desactivado",
+    "hint": "Ve a la pestaña de Configuración para cambiar estos ajustes",
+    "playerSettings": "Ajustes del Jugador",
+    "gameOptions": "Opciones de Juego",
+    "enableTimer": "Activar Temporizador",
+    "enableSounds": "Activar Sonidos",
+    "player1Name": "Nombre del Jugador 1",
+    "player2Name": "Nombre del Jugador 2",
+    "selectSymbol": "Seleccionar Símbolo",
+    "dangerZone": "Zona de Peligro",
+    "settingsUpdated": "¡Configuración actualizada correctamente!",
+    "gridSizeLabel": "Tamaño",
+    "winLengthLabel": "Para ganar",
+    "roundsLabel": "Rondas",
+    "timerLabel": "Temporizador"
+  },
+  "leaderboard": {
+    "title": "Tabla de Clasificación",
+    "clearButton": "Borrar Tabla",
+    "confirmClear": "¿Estás seguro de que quieres borrar la tabla de clasificación?",
+    "noData": "Aún no hay registros. ¡Juega algunas partidas!",
+    "time": "Tiempo",
+    "player": "Jugador",
+    "date": "Fecha",
+    "fastestWinTimes": "Tiempos Más Rápidos",
+    "loading": "Cargando...",
+    "gridInfo": "Cuadrícula {{size}}x{{size}} ({{length}} para ganar)"
+  },
+  "language": {
+    "select": "Seleccionar Idioma",
+    "en": "Inglés",
+    "es": "Español",
+    "tr": "Turco"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "clear": "Borrar",
+    "loading": "Cargando..."
+  }
+} 

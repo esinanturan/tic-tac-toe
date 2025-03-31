@@ -1,0 +1,5 @@
+/*
+If there is an already running Expo server do not try to run a new one.
+Always keep the existing design system all across the app.
+Always follow SOLID and DRY principes of programming.
+*/
